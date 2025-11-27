@@ -1,0 +1,406 @@
+<script setup>
+import { Indonesian } from "flatpickr/dist/l10n/id.js";
+definePage({
+  meta: {
+    action: "read",
+    subject: "Ptk",
+  },
+});
+onMounted(async () => {
+  await fetchData();
+});
+const isLoading = ref(false);
+const sekolah = ref();
+const form = ref({
+  nama: null,
+  nik: null,
+  jenis_kelamin: null,
+  tempat_lahir: null,
+  tanggal_lahir: null,
+  provinsi_id: null,
+  kabupaten_id: null,
+  kecamatan_id: null,
+  rt: null,
+  rw: null,
+  alamat_jalan: null,
+  desa_kelurahan: null,
+  email: null,
+  nama_ibu_kandung: null,
+  status_perkawinan: null,
+  sk_pengangkatan: null,
+  tmt_pengangkatan: null,
+  sekolah_id: null,
+  jabatan_ptk_id: null,
+  tahun_ajaran_id: null,
+  jenis_ptk_id: null,
+});
+const fetchData = async () => {
+  isLoading.value = true;
+  try {
+    const response = await useApi(createUrl("/cek-sekolah"));
+    let getData = response.data.value;
+    sekolah.value = getData.sekolah;
+    form.value.sekolah_id = getData.sekolah.sekolah_id;
+    form.value.tahun_ajaran_id = getData.semester.tahun_ajaran_id;
+    const provinsi_id = fields.value.find((s) => {
+      return s.id === "provinsi_id";
+    });
+    provinsi_id.items = getData.wilayah;
+    const jenis_ptk_id = fields.value.find((s) => {
+      return s.id === "jenis_ptk_id";
+    });
+    jenis_ptk_id.items = getData.jenis_ptk;
+  } catch (error) {
+    console.error(error);
+  } finally {
+    isLoading.value = false;
+  }
+};
+const dateConfig = {
+  dateFormat: `Y-m-d`,
+  locale: Indonesian,
+  altFormat: "j F Y",
+  altInput: true,
+};
+const isSnackbarTopEndVisible = ref(false);
+const refVForm = ref();
+const fields = ref([
+  {
+    id: "nama",
+    nama: "Nama",
+    type: "text",
+  },
+  {
+    id: "nik",
+    nama: "NIK",
+    type: "text",
+  },
+  {
+    id: "jenis_kelamin",
+    nama: "Jenis Kelamin",
+    type: "select",
+    items: [
+      { title: "Laki-laki", value: "L" },
+      { title: "Perempuan", value: "P" },
+    ],
+  },
+  {
+    id: "tempat_lahir",
+    nama: "Tempat Lahir",
+    type: "text",
+  },
+  {
+    id: "tanggal_lahir",
+    nama: "Tanggal Lahir",
+    type: "date",
+  },
+  {
+    id: "provinsi_id",
+    nama: "Provinsi",
+    type: "wilayah",
+    items: [],
+  },
+  {
+    id: "kabupaten_id",
+    nama: "Kabupaten/Kota",
+    type: "wilayah",
+    items: [],
+  },
+  {
+    id: "kecamatan_id",
+    nama: "Kecamatan",
+    type: "wilayah",
+    items: [],
+  },
+  {
+    id: "rt_rw",
+    nama: "RT/RW",
+    type: "rt_rw",
+  },
+  {
+    id: "alamat_jalan",
+    nama: "Alamat",
+    type: "text",
+  },
+  {
+    id: "desa_kelurahan",
+    nama: "Desa/Kelurahan",
+    type: "text",
+  },
+  {
+    id: "kode_pos",
+    nama: "Kodepos",
+    type: "text",
+  },
+  {
+    id: "no_hp",
+    nama: "No. HP",
+    type: "text",
+  },
+  {
+    id: "email",
+    nama: "Email",
+    type: "text",
+  },
+  {
+    id: "nama_ibu_kandung",
+    nama: "Nama Ibu Kandung",
+    type: "text",
+  },
+  {
+    id: "status_perkawinan",
+    nama: "Status Perkawinan",
+    type: "select",
+    items: [
+      { title: "Belum", value: 1 },
+      { title: "Sudah", value: 2 },
+    ],
+  },
+  {
+    id: "nama_suami_istri",
+    nama: "Nama Suami/Istri",
+    type: "text",
+  },
+  {
+    id: "sk_pengangkatan",
+    nama: "SK Pengangkatan",
+    type: "text",
+  },
+  {
+    id: "tmt_pengangkatan",
+    nama: "TMT",
+    type: "date",
+  },
+  {
+    id: "jenis_ptk_id",
+    nama: "Jenis PTK",
+    type: "autocomplete",
+    title: "jenis_ptk",
+    value: "jenis_ptk_id",
+    items: [],
+    change: async (field, val) => {
+      form.value.jabatan_ptk_id = null;
+      console.log("jenis_ptk_id changed:", val);
+      await $api("/get-jabatan", {
+        method: "POST",
+        body: {
+          jenis_ptk_id: val,
+        },
+        async onResponse({ response }) {
+          let getData = response._data;
+          const jabatan_ptk_id = fields.value.find((s) => {
+            return s.id === "jabatan_ptk_id";
+          });
+          jabatan_ptk_id.items = getData;
+        },
+      });
+    },
+  },
+  {
+    id: "jabatan_ptk_id",
+    nama: "Jabatan PTK",
+    type: "autocomplete",
+    title: "jabatan_ptk",
+    value: "jabatan_ptk_id",
+    items: [],
+    change: async (field, val) => {},
+  },
+]);
+const errors = ref({
+  nik: undefined,
+});
+const submit = async () => {
+  try {
+    const res = await $api("/tambah-ptk", {
+      method: "POST",
+      body: form.value,
+      onResponseError({ response }) {
+        errors.value = response._data.errors;
+      },
+    });
+    console.log(res);
+    isSnackbarTopEndVisible.value = true;
+    await nextTick(() => {
+      window.location.reload();
+      //form.value.tanggal_lahir = null;
+      //form.value.tmt_pengangkatan = null;
+      //refVForm.value.reset();
+      console.log("reset Form");
+    });
+  } catch (err) {
+    console.error(err);
+  }
+};
+const onSubmit = () => {
+  refVForm.value?.validate().then(({ valid: isValid }) => {
+    if (isValid) submit();
+  });
+};
+const changeWilayah = async (field, val) => {
+  let cari;
+  if (field == "provinsi_id") {
+    cari = "kabupaten";
+  } else {
+    cari = "kecamatan";
+  }
+  await $api("/wilayah", {
+    method: "POST",
+    body: {
+      cari: cari,
+      kode_wilayah: val,
+    },
+    onResponseError({ response }) {
+      errors.value = response._data.errors;
+    },
+    onResponse({ response }) {
+      let getData = response._data;
+      if (getData.length) {
+        if (field == "provinsi_id") {
+          const kabupaten_id = fields.value.find((s) => {
+            return s.id === "kabupaten_id";
+          });
+          kabupaten_id.items = getData;
+        } else {
+          const kecamatan_id = fields.value.find((s) => {
+            return s.id === "kecamatan_id";
+          });
+          kecamatan_id.items = getData;
+        }
+      }
+    },
+  });
+};
+</script>
+<template>
+  <template v-if="isLoading">
+    <VCard class="text-center">
+      <VProgressCircular :size="60" indeterminate color="error" class="my-10" />
+    </VCard>
+  </template>
+  <template v-else>
+    <VCard v-if="sekolah">
+      <VCardItem class="pb-4">
+        <VCardTitle>Tambah PTK</VCardTitle>
+      </VCardItem>
+      <VDivider />
+      <VForm ref="refVForm" @submit.prevent="onSubmit">
+        <VCardText>
+          <VRow>
+            <template v-for="field in fields">
+              <VCol cols="12">
+                <VRow no-gutters>
+                  <VCol cols="12" md="3" class="d-flex align-items-center">
+                    <label
+                      class="v-label text-body-2 text-high-emphasis"
+                      :for="field.id"
+                      >{{ field.nama }}</label
+                    >
+                  </VCol>
+                  <VCol cols="12" md="9">
+                    <template v-if="field.type == 'text'">
+                      <AppTextField
+                        :id="field.id"
+                        v-model="form[field.id]"
+                        :rules="[requiredValidator]"
+                        :placeholder="field.nama"
+                        :error-messages="errors[field.id]"
+                        persistent-placeholder
+                      />
+                    </template>
+                    <template v-if="field.type == 'date'">
+                      <AppDateTimePicker
+                        :id="field.id"
+                        v-model="form[field.id]"
+                        :rules="[requiredValidator]"
+                        placeholder="== Pilih Tanggal =="
+                        :config="dateConfig"
+                      />
+                    </template>
+                    <template v-if="field.type == 'rt_rw'">
+                      <VRow no-gutters>
+                        <VCol cols="6">
+                          <AppTextField
+                            :id="field.id"
+                            v-model="form.rt"
+                            :rules="[requiredValidator]"
+                            placeholder="RT"
+                            persistent-placeholder
+                            class="me-1"
+                          />
+                        </VCol>
+                        <VCol cols="6">
+                          <AppTextField
+                            :id="field.id"
+                            v-model="form.rw"
+                            :rules="[requiredValidator]"
+                            placeholder="RW"
+                            persistent-placeholder
+                            class="ms-1"
+                          />
+                        </VCol>
+                      </VRow>
+                    </template>
+                    <template v-if="field.type == 'select'">
+                      <AppSelect
+                        :id="field.id"
+                        v-model="form[field.id]"
+                        :rules="[requiredValidator]"
+                        :items="field.items"
+                        :placeholder="`Pilih ${field.nama}`"
+                      />
+                    </template>
+                    <template v-if="field.type == 'wilayah'">
+                      <AppAutocomplete
+                        :id="field.id"
+                        v-model="form[field.id]"
+                        :rules="[requiredValidator]"
+                        :items="field.items"
+                        :placeholder="`Pilih ${field.nama}`"
+                        item-title="nama"
+                        item-value="kode_wilayah"
+                        @update:model-value="changeWilayah(field.id, $event)"
+                      />
+                    </template>
+                    <template v-if="field.type == 'autocomplete'">
+                      <AppAutocomplete
+                        :id="field.id"
+                        v-model="form[field.id]"
+                        :rules="[requiredValidator]"
+                        :items="field.items"
+                        :placeholder="`Pilih ${field.nama}`"
+                        :item-title="field.title"
+                        :item-value="field.value"
+                        @update:model-value="field.change(field.id, $event)"
+                      />
+                    </template>
+                  </VCol>
+                </VRow>
+              </VCol>
+            </template>
+            <VCol cols="12">
+              <VRow no-gutters>
+                <VCol cols="12" md="3" />
+                <VCol cols="12" md="9">
+                  <VBtn type="submit" class="me-4"> Simpan </VBtn>
+                </VCol>
+              </VRow>
+            </VCol>
+          </VRow>
+        </VCardText>
+      </VForm>
+    </VCard>
+    <VCard color="#007BB6" v-else>
+      <VCardText>
+        <p class="clamp-text text-white mb-0">
+          Data Sekolah tidak ditemukan. Silahkan Simpan Data Sekolah terlebih dahulu
+          <RouterLink class="text-success ms-1" :to="{ name: 'root' }">
+            disini
+          </RouterLink>
+        </p>
+      </VCardText>
+    </VCard>
+  </template>
+  <VSnackbar v-model="isSnackbarTopEndVisible" color="success" location="top end">
+    PTK baru berhasil disimpan.
+  </VSnackbar>
+</template>
