@@ -85,7 +85,8 @@ function getRombonganBelajar(){
         },
         'kurikulum' => function($query){
             $query->whereNull('expired_date');
-        }
+        },
+        'wali_kelas',
     ])->where(function($query){
         $query->whereHas('wali_kelas', function($query){
             $query->where('soft_delete', 0);
@@ -177,7 +178,9 @@ function getPd($status){
     return $data;
 }
 function getAnggotaPilihan(){
-    $data = AnggotaRombel::where(function($query){
+    $data = AnggotaRombel::with(['rombongan_belajar', 'pd' => function($query){
+        $query->where('soft_delete', 0);
+    }])->where(function($query){
         $query->whereHas('rombongan_belajar', function($query){
             $query->where('semester_id', request()->semester_id);
             $query->where('sekolah_id', request()->sekolah_id);
@@ -206,7 +209,7 @@ function getEkskul(){
     $data = KelasEkskul::with([
         'rombongan_belajar' => function($query){
             $query->where('soft_delete', 0);
-            $query->whereHas('wali_kelas', function($query){
+            $query->withWhereHas('wali_kelas', function($query){
                 $query->where('soft_delete', 0);
                 $query->whereHas('ptk_terdaftar', function($query){
                     $query->where('sekolah_id', request()->sekolah_id);
@@ -273,6 +276,7 @@ function getPembelajaran(){
         $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
         $query->where('soft_delete', 0);
     })->with([
+        'rombongan_belajar',
         'mata_pelajaran',
         'sub_mapel' => function($query){
             $query->where('soft_delete', 0);
@@ -283,6 +287,7 @@ function getPembelajaran(){
                 $query->where('soft_delete', 0);
             });
             $query->with([
+                'rombongan_belajar',
                 'ptk_terdaftar' => function($query){
                     $query->where('ptk.soft_delete', 0);
                     $query->where('ptk_terdaftar.soft_delete', 0);
@@ -340,7 +345,7 @@ function getPembelajaran(){
     return $data;
 }
 function getAnggotaEkskul(){
-    $data = AnggotaRombel::with(['pd' => function($query){
+    $data = AnggotaRombel::with(['rombongan_belajar', 'pd' => function($query){
         $query->where('soft_delete', 0);
         $query->whereHas('registrasi_peserta_didik', function($query){
             $query->where('sekolah_id', request()->sekolah_id);
