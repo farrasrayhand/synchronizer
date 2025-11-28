@@ -22,19 +22,19 @@ function encryptor($str){
 function decryptor($str){
     return $str;
 }
-function jenis_keluar($query, $status){
+function jenis_keluar($query, $status, $sekolah_id, $semester_id){
     if($status){
         $query->whereNotIn('jenis_keluar_id', ['2', '3', '4', '5', '6', '7', '8', '9']);
         $query->where('soft_delete', 0);
-        $query->where('sekolah_id', request()->sekolah_id);
+        $query->where('sekolah_id', $sekolah_id);
         $query->orWhereNull('jenis_keluar_id');
         $query->where('soft_delete', 0);
-        $query->where('sekolah_id', request()->sekolah_id);
+        $query->where('sekolah_id', $sekolah_id);
     } else {
         $query->whereIn('jenis_keluar_id', ['2', '3', '4', '5', '6', '7', '8', '9']);
-        $query->whereBetween('tanggal_keluar', periode_aktif(request()->semester_id));
+        $query->whereBetween('tanggal_keluar', periode_aktif($semester_id));
         $query->where('soft_delete', 0);
-        $query->where('sekolah_id', request()->sekolah_id);
+        $query->where('sekolah_id', $sekolah_id);
     }
 }
 function periode_aktif($semester_id){
@@ -42,11 +42,11 @@ function periode_aktif($semester_id){
     $data = [$find->tanggal_mulai, $find->tanggal_selesai];
     return $data;
 }
-function getPtk(){
+function getPtk($sekolah_id, $tahun_ajaran_id){
     $data = Ptk::with([
-        'ptk_terdaftar' => function($query){
-            $query->where('sekolah_id', request()->sekolah_id);
-            $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+        'ptk_terdaftar' => function($query) use ($sekolah_id, $tahun_ajaran_id){
+            $query->where('sekolah_id', $sekolah_id);
+            $query->where('tahun_ajaran_id', $tahun_ajaran_id);
             $query->whereNull('jenis_keluar_id');
             $query->where('soft_delete', 0);
         },
@@ -62,18 +62,18 @@ function getPtk(){
         'wilayah' => function($query){
             $query->with(['parrentRecursive']);
         }
-    ])->where(function($query){
+    ])->where(function($query) use ($sekolah_id, $tahun_ajaran_id){
         $query->where('soft_delete', 0);
-        $query->whereHas('ptk_terdaftar', function($query){
-            $query->where('sekolah_id', request()->sekolah_id);
-            $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+        $query->whereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id){
+            $query->where('sekolah_id', $sekolah_id);
+            $query->where('tahun_ajaran_id', $tahun_ajaran_id);
             $query->whereNull('jenis_keluar_id');
             $query->where('soft_delete', 0);
         });
     })->orderBy('nama')->get();
     return $data;
 }
-function getRombonganBelajar(){
+function getRombonganBelajar($sekolah_id, $tahun_ajaran_id, $semester_id){
     $data = RombonganBelajar::with([
         'jurusan_sp' => function($query){
             $query->where('soft_delete', 0);
@@ -87,38 +87,38 @@ function getRombonganBelajar(){
             $query->whereNull('expired_date');
         },
         'wali_kelas',
-    ])->where(function($query){
-        $query->whereHas('wali_kelas', function($query){
+    ])->where(function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+        $query->whereHas('wali_kelas', function($query) use ($sekolah_id, $tahun_ajaran_id){
             $query->where('soft_delete', 0);
-            $query->whereHas('ptk_terdaftar', function($query){
-                $query->where('sekolah_id', request()->sekolah_id);
-                $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+            $query->whereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id){
+                $query->where('sekolah_id', $sekolah_id);
+                $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                 $query->whereNull('jenis_keluar_id');
                 $query->where('soft_delete', 0);
             });
         });
-        $query->where('semester_id', request()->semester_id);
-		$query->where('sekolah_id', request()->sekolah_id);
+        $query->where('semester_id', $semester_id);
+		$query->where('sekolah_id', $sekolah_id);
         $query->whereIn('jenis_rombel', [1, 8, 9, 16]);
         $query->where('soft_delete', 0);
     })->orderBy('nama')->get();
     return $data;
 }
-function getPd($status){
+function getPd($status, $sekolah_id, $tahun_ajaran_id, $semester_id){
     $data = PesertaDidik::with([
-        'anggota_rombel' => function($query){
+        'anggota_rombel' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
-            $query->withWhereHas('rombongan_belajar', function($query){
+            $query->withWhereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->where('soft_delete', 0);
-                $query->where('sekolah_id', request()->sekolah_id);
-                $query->where('semester_id', request()->semester_id);
+                $query->where('sekolah_id', $sekolah_id);
+                $query->where('semester_id', $semester_id);
                 //$query->whereIn('jenis_rombel', [1, 8, 9]);
                 $query->where('jenis_rombel', 1);
-                $query->whereHas('wali_kelas', function($query){
+                $query->whereHas('wali_kelas', function($query) use ($sekolah_id, $tahun_ajaran_id){
                     $query->where('soft_delete', 0);
-                    $query->whereHas('ptk_terdaftar', function($query){
-                        $query->where('sekolah_id', request()->sekolah_id);
-                        $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                    $query->whereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id){
+                        $query->where('sekolah_id', $sekolah_id);
+                        $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                         $query->whereNull('jenis_keluar_id');
                         $query->where('soft_delete', 0);
                     });
@@ -128,46 +128,46 @@ function getPd($status){
         'wilayah' => function($query){
             $query->with(['parrentRecursive']);
         },
-        'registrasi_peserta_didik' => function($query) use ($status){
-            jenis_keluar($query, $status);
+        'registrasi_peserta_didik' => function($query) use ($status, $sekolah_id, $semester_id){
+            jenis_keluar($query, $status, $sekolah_id, $semester_id);
         },
-        'diterima_dikelas' => function($query) use ($status){
+        'diterima_dikelas' => function($query) use ($status, $sekolah_id){
             $query->with(['rombongan_belajar' => function($query){
                 $query->select('rombongan_belajar_id', 'nama');
                 $query->where('soft_delete', 0);
             }]);
             $query->where('jenis_pendaftaran_id', 1);
             $query->where('soft_delete', 0);
-            $query->whereHas('rombongan_belajar', function($query){
+            $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id){
                 $query->where('soft_delete', 0);
-                $query->where('sekolah_id', request()->sekolah_id);
+                $query->where('sekolah_id', $sekolah_id);
                 $query->where('jenis_rombel', 1);
             });
             $query->orWhere('jenis_pendaftaran_id', 2);
             $query->where('soft_delete', 0);
-            $query->whereHas('rombongan_belajar', function($query){
+            $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id){
                 $query->where('soft_delete', 0);
-                $query->where('sekolah_id', request()->sekolah_id);
+                $query->where('sekolah_id', $sekolah_id);
                 $query->where('jenis_rombel', 1);
             });
         }
-    ])->where(function($query) use ($status){
-        $query->whereHas('registrasi_peserta_didik', function($query) use ($status){
-            jenis_keluar($query, $status);
+    ])->where(function($query) use ($status, $sekolah_id, $tahun_ajaran_id, $semester_id){
+        $query->whereHas('registrasi_peserta_didik', function($query) use ($status, $sekolah_id, $semester_id){
+            jenis_keluar($query, $status, $sekolah_id, $semester_id);
         });
-        $query->whereHas('anggota_rombel', function($query){
+        $query->whereHas('anggota_rombel', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
-            $query->whereHas('rombongan_belajar', function($query){
+            $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->where('soft_delete', 0);
-                $query->where('sekolah_id', request()->sekolah_id);
-                $query->where('semester_id', request()->semester_id);
+                $query->where('sekolah_id', $sekolah_id);
+                $query->where('semester_id', $semester_id);
                 //$query->whereIn('jenis_rombel', [1, 8, 9]);
                 $query->where('jenis_rombel', 1);
-                $query->whereHas('wali_kelas', function($query){
+                $query->whereHas('wali_kelas', function($query) use ($sekolah_id, $tahun_ajaran_id){
                     $query->where('soft_delete', 0);
-                    $query->whereHas('ptk_terdaftar', function($query){
-                        $query->where('sekolah_id', request()->sekolah_id);
-                        $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                    $query->whereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id){
+                        $query->where('sekolah_id', $sekolah_id);
+                        $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                         $query->whereNull('jenis_keluar_id');
                         $query->where('soft_delete', 0);
                     });
@@ -177,20 +177,20 @@ function getPd($status){
     })->orderBy('peserta_didik_id')->get();
     return $data;
 }
-function getAnggotaPilihan(){
+function getAnggotaPilihan($sekolah_id, $tahun_ajaran_id, $semester_id){
     $data = AnggotaRombel::with(['rombongan_belajar', 'pd' => function($query){
         $query->where('soft_delete', 0);
-    }])->where(function($query){
-        $query->whereHas('rombongan_belajar', function($query){
-            $query->where('semester_id', request()->semester_id);
-            $query->where('sekolah_id', request()->sekolah_id);
+    }])->where(function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+        $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+            $query->where('semester_id', $semester_id);
+            $query->where('sekolah_id', $sekolah_id);
             $query->where('soft_delete', 0);
             $query->where('jenis_rombel', 16);
-            $query->whereHas('wali_kelas', function($query){
+            $query->whereHas('wali_kelas', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->where('soft_delete', 0);
-                $query->whereHas('ptk_terdaftar', function($query){
-                    $query->where('sekolah_id', request()->sekolah_id);
-                    $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                $query->whereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                    $query->where('sekolah_id', $sekolah_id);
+                    $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                     $query->whereNull('jenis_keluar_id');
                     $query->where('soft_delete', 0);
                 });
@@ -205,15 +205,15 @@ function getAnggotaPilihan(){
     })->get();
     return $data;
 }
-function getEkskul(){
+function getEkskul($sekolah_id, $tahun_ajaran_id, $semester_id){
     $data = KelasEkskul::with([
-        'rombongan_belajar' => function($query){
+        'rombongan_belajar' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
-            $query->withWhereHas('wali_kelas', function($query){
+            $query->withWhereHas('wali_kelas', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->where('soft_delete', 0);
-                $query->whereHas('ptk_terdaftar', function($query){
-                    $query->where('sekolah_id', request()->sekolah_id);
-                    $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                $query->whereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                    $query->where('sekolah_id', $sekolah_id);
+                    $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                     $query->whereNull('jenis_keluar_id');
                     $query->where('soft_delete', 0);
                 });
@@ -223,18 +223,18 @@ function getEkskul(){
                 $query->select('id_ruang', 'nm_ruang');
             }]);
         },
-    ])->where(function($query){
+    ])->where(function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->where('soft_delete', 0);
-        $query->whereHas('rombongan_belajar', function($query){
+        $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
-            $query->where('semester_id', request()->semester_id);
-            $query->where('sekolah_id', request()->sekolah_id);
+            $query->where('semester_id', $semester_id);
+            $query->where('sekolah_id', $sekolah_id);
             $query->where('jenis_rombel', 51);
-            $query->whereHas('wali_kelas', function($query){
+            $query->whereHas('wali_kelas', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->where('soft_delete', 0);
-                $query->whereHas('ptk_terdaftar', function($query){
-                    $query->where('sekolah_id', request()->sekolah_id);
-                    $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                $query->whereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                    $query->where('sekolah_id', $sekolah_id);
+                    $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                     $query->whereNull('jenis_keluar_id');
                     $query->where('soft_delete', 0);
                 });
@@ -243,20 +243,20 @@ function getEkskul(){
     })->get();
     return $data;
 }
-function getPembelajaran(){
-    $data = Pembelajaran::withWhereHas('ptk_terdaftar', function($query){
+function getPembelajaran($sekolah_id, $tahun_ajaran_id, $semester_id){
+    $data = Pembelajaran::withWhereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->where('ptk.soft_delete', 0);
         $query->where('ptk_terdaftar.soft_delete', 0);
         $query->whereNull('jenis_keluar_id');
-        $query->where('sekolah_id', request()->sekolah_id);
-        $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+        $query->where('sekolah_id', $sekolah_id);
+        $query->where('tahun_ajaran_id', $tahun_ajaran_id);
         $query->with([
             'wilayah' => function($query){
                 $query->with(['parrentRecursive']);
             },
-            'ptk_terdaftar' => function($query){
-                $query->where('sekolah_id', request()->sekolah_id);
-                $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+            'ptk_terdaftar' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                $query->where('sekolah_id', $sekolah_id);
+                $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                 $query->whereNull('jenis_keluar_id');
                 $query->where('soft_delete', 0);
             },
@@ -270,37 +270,37 @@ function getPembelajaran(){
                 $query->where('soft_delete', 0);
             },
         ]);
-    })->withWhereHas('guru', function($query){
+    })->withWhereHas('guru', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->whereNull('jenis_keluar_id');
-        $query->where('sekolah_id', request()->sekolah_id);
-        $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+        $query->where('sekolah_id', $sekolah_id);
+        $query->where('tahun_ajaran_id', $tahun_ajaran_id);
         $query->where('soft_delete', 0);
     })->with([
         'rombongan_belajar',
         'mata_pelajaran',
-        'sub_mapel' => function($query){
+        'sub_mapel' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
-            $query->withWhereHas('guru', function($query){
+            $query->withWhereHas('guru', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->whereNull('jenis_keluar_id');
-                $query->where('sekolah_id', request()->sekolah_id);
-                $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                $query->where('sekolah_id', $sekolah_id);
+                $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                 $query->where('soft_delete', 0);
             });
             $query->with([
                 'rombongan_belajar',
-                'ptk_terdaftar' => function($query){
+                'ptk_terdaftar' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                     $query->where('ptk.soft_delete', 0);
                     $query->where('ptk_terdaftar.soft_delete', 0);
                     $query->whereNull('jenis_keluar_id');
-                    $query->where('sekolah_id', request()->sekolah_id);
-                    $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                    $query->where('sekolah_id', $sekolah_id);
+                    $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                     $query->with([
                         'wilayah' => function($query){
                             $query->with(['parrentRecursive']);
                         },
-                        'ptk_terdaftar' => function($query){
-                            $query->where('sekolah_id', request()->sekolah_id);
-                            $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                        'ptk_terdaftar' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                            $query->where('sekolah_id', $sekolah_id);
+                            $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                             $query->whereNull('jenis_keluar_id');
                             $query->where('soft_delete', 0);
                         },
@@ -323,19 +323,19 @@ function getPembelajaran(){
                 },
             ]);
         },
-    ])->where(function($query){
+    ])->where(function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->where('soft_delete', 0);
         $query->whereNull('induk_pembelajaran_id');
-        $query->whereHas('rombongan_belajar', function($query){
+        $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
-            $query->where('semester_id', request()->semester_id);
-            $query->where('sekolah_id', request()->sekolah_id);
+            $query->where('semester_id', $semester_id);
+            $query->where('sekolah_id', $sekolah_id);
             $query->whereIn('jenis_rombel', [1, 8, 9, 16]);
-            $query->whereHas('wali_kelas', function($query){
+            $query->whereHas('wali_kelas', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->where('soft_delete', 0);
-                $query->whereHas('ptk_terdaftar', function($query){
-                    $query->where('sekolah_id', request()->sekolah_id);
-                    $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                $query->whereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                    $query->where('sekolah_id', $sekolah_id);
+                    $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                     $query->whereNull('jenis_keluar_id');
                     $query->where('soft_delete', 0);
                 });
@@ -344,68 +344,68 @@ function getPembelajaran(){
     })->orderBy('pembelajaran_id')->get();
     return $data;
 }
-function getAnggotaEkskul(){
-    $data = AnggotaRombel::with(['rombongan_belajar', 'pd' => function($query){
+function getAnggotaEkskul($sekolah_id, $tahun_ajaran_id, $semester_id){
+    $data = AnggotaRombel::with(['rombongan_belajar', 'pd' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->where('soft_delete', 0);
-        $query->whereHas('registrasi_peserta_didik', function($query){
-            $query->where('sekolah_id', request()->sekolah_id);
+        $query->whereHas('registrasi_peserta_didik', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+            $query->where('sekolah_id', $sekolah_id);
             $query->where('soft_delete', 0);
             $query->whereNull('jenis_keluar_id');
         });
         $query->with([
-            'registrasi_peserta_didik' => function($query){
-                $query->where('sekolah_id', request()->sekolah_id);
+            'registrasi_peserta_didik' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                $query->where('sekolah_id', $sekolah_id);
                 $query->where('soft_delete', 0);
                 $query->whereNull('jenis_keluar_id');
             },
             'wilayah' => function($query){
                 $query->with(['parrentRecursive']);
             },
-            'diterima_dikelas' => function($query){
+            'diterima_dikelas' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->with(['rombongan_belajar' => function($query){
                     $query->select('rombongan_belajar_id', 'nama');
                     $query->where('soft_delete', 0);
                 }]);
                 $query->where('jenis_pendaftaran_id', 1);
                 $query->where('soft_delete', 0);
-                $query->whereHas('rombongan_belajar', function($query){
+                $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                     $query->where('soft_delete', 0);
-                    $query->where('sekolah_id', request()->sekolah_id);
+                    $query->where('sekolah_id', $sekolah_id);
                     $query->where('jenis_rombel', 1);
                 });
                 $query->orWhere('jenis_pendaftaran_id', 2);
                 $query->where('soft_delete', 0);
-                $query->whereHas('rombongan_belajar', function($query){
+                $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                     $query->where('soft_delete', 0);
-                    $query->where('sekolah_id', request()->sekolah_id);
+                    $query->where('sekolah_id', $sekolah_id);
                     $query->where('jenis_rombel', 1);
                 });
             }
         ]);
-    }])->where(function($query){
+    }])->where(function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->where('soft_delete', 0);
-        $query->whereHas('rombongan_belajar', function($query){
+        $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->whereHas('kelas_ekskul', function($query){
                 $query->where('soft_delete', 0);    
             });
             $query->where('soft_delete', 0);
-            $query->where('semester_id', request()->semester_id);
-            $query->where('sekolah_id', request()->sekolah_id);
+            $query->where('semester_id', $semester_id);
+            $query->where('sekolah_id', $sekolah_id);
             $query->where('jenis_rombel', 51);
-            $query->whereHas('wali_kelas', function($query){
+            $query->whereHas('wali_kelas', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->where('soft_delete', 0);
-                $query->whereHas('ptk_terdaftar', function($query){
-                    $query->where('sekolah_id', request()->sekolah_id);
-                    $query->where('tahun_ajaran_id', request()->tahun_ajaran_id);
+                $query->whereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                    $query->where('sekolah_id', $sekolah_id);
+                    $query->where('tahun_ajaran_id', $tahun_ajaran_id);
                     $query->whereNull('jenis_keluar_id');
                     $query->where('soft_delete', 0);
                 });
             });
         });
-        $query->whereHas('pd', function($query){
+        $query->whereHas('pd', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
-            $query->whereHas('registrasi_peserta_didik', function($query){
-                $query->where('sekolah_id', request()->sekolah_id);
+            $query->whereHas('registrasi_peserta_didik', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                $query->where('sekolah_id', $sekolah_id);
                 $query->where('soft_delete', 0);
                 $query->whereNull('jenis_keluar_id');
             });
@@ -413,16 +413,16 @@ function getAnggotaEkskul(){
     })->get();
     return $data;
 }
-function getDudi(){
-    $data = Dudi::withWhereHas('mou', function($query){
+function getDudi($sekolah_id, $tahun_ajaran_id, $semester_id){
+    $data = Dudi::withWhereHas('mou', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->where('soft_delete', 0);
-        $query->where('sekolah_id', request()->sekolah_id);
-        $query->with(['akt_pd' => function($query){
+        $query->where('sekolah_id', $sekolah_id);
+        $query->with(['akt_pd' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
-            $query->withWhereHas('anggota_akt_pd', function($query){
+            $query->withWhereHas('anggota_akt_pd', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->where('soft_delete', 0);
-                $query->withWhereHas('registrasi_peserta_didik', function($query){
-                    $query->where('sekolah_id', request()->sekolah_id);
+                $query->withWhereHas('registrasi_peserta_didik', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+                    $query->where('sekolah_id', $sekolah_id);
                     $query->where('soft_delete', 0);
                     $query->whereNull('jenis_keluar_id');
                 });
@@ -435,77 +435,16 @@ function getDudi(){
         }]);
     })->orderBy('dudi_id')->get();
     return $data;
-    $data = Dudi::where(function($query){
-        $query->where('soft_delete', 0);
-        $query->whereHas('mou', function($query){
-            $query->where('soft_delete', 0);
-            $query->where('sekolah_id', request()->sekolah_id);
-            $query->whereHas('akt_pd', function($query){
-                $query->where('soft_delete', 0);
-                $query->whereHas('anggota_akt_pd', function($query){
-                    $query->where('soft_delete', 0);
-                    $query->whereHas('registrasi_peserta_didik', function($query){
-                        $query->where('sekolah_id', request()->sekolah_id);
-                        $query->where('soft_delete', 0);
-                        $query->whereNull('jenis_keluar_id');
-                    });
-                });
-            });
-        });
-    })->with(['mou' => function($query){
-        $query->where('soft_delete', 0);
-        $query->where('sekolah_id', request()->sekolah_id);
-        $query->whereHas('akt_pd', function($query){
-            $query->where('soft_delete', 0);
-            $query->whereHas('anggota_akt_pd', function($query){
-                $query->where('soft_delete', 0);
-                $query->whereHas('registrasi_peserta_didik', function($query){
-                    $query->where('sekolah_id', request()->sekolah_id);
-                    $query->where('soft_delete', 0);
-                    $query->whereNull('jenis_keluar_id');
-                });
-            });
-        });
-        $query->with(['akt_pd' => function($query){
-            $query->where('soft_delete', 0);
-            $query->whereHas('anggota_akt_pd', function($query){
-                $query->where('soft_delete', 0);
-                $query->whereHas('registrasi_peserta_didik', function($query){
-                    $query->where('sekolah_id', request()->sekolah_id);
-                    $query->where('soft_delete', 0);
-                    $query->whereNull('jenis_keluar_id');
-                });
-            });
-            $query->with([
-                'anggota_akt_pd' => function($query){
-                    $query->where('soft_delete', 0);
-                    $query->whereHas('registrasi_peserta_didik', function($query){
-                        $query->where('sekolah_id', request()->sekolah_id);
-                        $query->where('soft_delete', 0);
-                        $query->whereNull('jenis_keluar_id');
-                    });
-                    $query->with(['registrasi_peserta_didik' => function($query){
-                        $query->where('sekolah_id', request()->sekolah_id);
-                        $query->where('soft_delete', 0);
-                        $query->whereNull('jenis_keluar_id');
-                    }]);
-                },
-                'bimbing_pd' => function($query){
-                    $query->where('soft_delete', 0);
-                }
-            ]);
-        }]);
-    }])->get();
-    return $data;
 }
-function kirimDapodik($data_sync, $text, $next){
+function kirimDapodik($data_sync, $text, $next, $url_erapor = NULL){
+    $url_erapor = $url_erapor ?? request()->url_erapor;
     try {
         $response = Http::withOptions([
             'verify' => false,
         ])->withHeaders([
             'x-api-key' => $data_sync['sekolah_id'],
             'x-api-npsn' => $data_sync['npsn'],
-        ])->retry(3, 100)->post(request()->url_erapor.'/api/sinkronisasi/synchronizer', $data_sync);
+        ])->retry(3, 100)->post($url_erapor.'/api/sinkronisasi/synchronizer', $data_sync);
         $result = $response->json();
         if($response->successful()){
             $data = [
@@ -519,7 +458,7 @@ function kirimDapodik($data_sync, $text, $next){
                     'icon' => 'tabler-check',
                     'color' => 'success',
                     'title' => 'Berhasil!',
-                    'text' => 'Data Dapodik berhasil dikirim',
+                    'text' => $text .' berhasil dikirim',
                 ]
             ];
         } else {
@@ -545,6 +484,12 @@ function kirimDapodik($data_sync, $text, $next){
                 'icon' => 'tabler-xbox-x',
                 'title' => 'Gagal!',
                 'text' => 'Sekolah tidak ditemukan',
+                'notif' => [
+                    'color' => 'error',
+                    'icon' => 'tabler-xbox-x',
+                    'title' => 'Gagal!',
+                    'text' => 'Sekolah tidak ditemukan',
+                ]
             ];
         } else {
             $data = [
@@ -552,6 +497,12 @@ function kirimDapodik($data_sync, $text, $next){
                 'icon' => 'tabler-xbox-x',
                 'title' => 'Gagal!',
                 'text' => $e->getMessage(),
+                'notif' => [
+                    'color' => 'error',
+                    'icon' => 'tabler-xbox-x',
+                    'title' => 'Gagal!',
+                    'text' => $e->getMessage(),
+                ]
             ];
         }
     }

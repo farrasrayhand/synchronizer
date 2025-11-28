@@ -422,47 +422,47 @@ class DapodikController extends Controller
                 return response()->json($data);
             }
             if(request()->aksi == 'ptk'){
-                $items = getPtk();
+                $items = getPtk(request()->sekolah_id, request()->tahun_ajaran_id);
                 $text = request()->count.' Data PTK';
                 $next = 'rombel';
             }
             if(request()->aksi == 'rombel'){
-                $items = getRombonganBelajar();
+                $items = getRombonganBelajar(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
                 $text = request()->count.' Data Rombongan Belajar';
                 $next = 'pd_aktif';
             }
             if(request()->aksi == 'pd_aktif'){
-                $items = getPd(1);
+                $items = getPd(1, request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
                 $text = request()->count.' Data Peserta Didik Aktif';
                 $next = 'pd_keluar';
             }
             if(request()->aksi == 'pd_keluar'){
-                $items = getPd(0);
+                $items = getPd(0, request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
                 $text = request()->count.' Data Peserta Didik Keluar';
                 $next = 'anggota_matpil';
             }
             if(request()->aksi == 'anggota_matpil'){
-                $items = getAnggotaPilihan();
+                $items = getAnggotaPilihan(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
                 $text = request()->count.' Data Anggota Rombel Matpel Pilihan';
                 $next = 'pembelajaran';
             }
             if(request()->aksi == 'pembelajaran'){
-                $items = getPembelajaran();
+                $items = getPembelajaran(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
                 $text = request()->count.' Data Pembelajaran';
                 $next = 'ekskul';
             }
             if(request()->aksi == 'ekskul'){
-                $items = getEkskul();
+                $items = getEkskul(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
                 $text = request()->count.' Data Ekstrakurikuler';
                 $next = 'anggota_ekskul';
             }
             if(request()->aksi == 'anggota_ekskul'){
-                $items = getAnggotaEkskul();
+                $items = getAnggotaEkskul(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
                 $text = request()->count.' Data Anggota Ekstrakurikuler';
                 $next = 'dudi';
             }
             if(request()->aksi == 'dudi'){
-                $items = getDudi();
+                $items = getDudi(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
                 $text = request()->count.' Data DUDI';
                 $next = FALSE;
             }

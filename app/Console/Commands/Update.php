@@ -18,7 +18,7 @@ class Update extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Update Aplikasi';
 
     /**
      * Execute the console command.
@@ -28,9 +28,9 @@ class Update extends Command
         $this->info('Silahkan tunggu, sedang proses update aplikasi....');
         $this->call('optimize:clear');
         //exec("git pull origin main");
+        exec("git config --global --add safe.directory C:/synchronizer/dataweb");
         exec("git stash");
-        exec("git config --global --add safe.directory C:/tool-dapodik/dataweb");
-        exec("git pull https://github.com/masadi/tool-dapodik.git");
+        exec("git pull https://github.com/masadi/synchronizer.git");
         exec("git clean -df");
         exec("composer update");
     }
