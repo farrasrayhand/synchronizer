@@ -108,7 +108,7 @@ function getPd($status){
     $data = PesertaDidik::with([
         'anggota_rombel' => function($query){
             $query->where('soft_delete', 0);
-            $query->whereHas('rombongan_belajar', function($query){
+            $query->withWhereHas('rombongan_belajar', function($query){
                 $query->where('soft_delete', 0);
                 $query->where('sekolah_id', request()->sekolah_id);
                 $query->where('semester_id', request()->semester_id);
