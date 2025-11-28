@@ -493,12 +493,13 @@ function getDudi(){
     }])->get();
     return $data;
 }
-function kirimDapodik($sekolah_id, $data_sync, $text, $next){
+function kirimDapodik($data_sync, $text, $next){
     try {
         $response = Http::withOptions([
             'verify' => false,
         ])->withHeaders([
-            'x-api-key' => $sekolah_id,
+            'x-api-key' => $data_sync['sekolah_id'],
+            'x-api-npsn' => $data_sync['npsn'],
         ])->retry(3, 100)->post(request()->url_erapor.'/api/sinkronisasi/synchronizer', $data_sync);
         $result = $response->json();
         if($response->successful()){

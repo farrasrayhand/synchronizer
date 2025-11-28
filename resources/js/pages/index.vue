@@ -12,8 +12,7 @@ const sekolah = ref();
 const items = ref([]);
 const error = ref(false);
 const loadingBody = ref(true);
-const isUrlErapor = ref(true);
-const urlErapor = ref();
+const isurl_erapor = ref(true);
 const clickMe = async () => {
   btnLoading.value = true;
   const find = items.value.find((s) => {
@@ -52,8 +51,8 @@ const fetchData = async () => {
       btnLoading.value = false;
       jumlah.value = getData.jumlah;
       table_sync.value = getData.table_sync;
-      isUrlErapor.value = getData.user?.erapor?.url_erapor ? false : true;
-      urlErapor.value = getData.user?.erapor?.url_erapor;
+      isurl_erapor.value = getData.user?.erapor?.url_erapor ? false : true;
+      url_erapor.value = getData.user?.erapor?.url_erapor;
       semesterId.value = getData.user?.semester?.semester_id;
       tahunAjaranId.value = getData.user?.semester?.tahun_ajaran_id;
     }
@@ -93,9 +92,10 @@ const kirimData = async (data, aksi, count, next) => {
       method: "POST",
       body: {
         sekolah_id: sekolah.value?.sekolah_id,
+        npsn: sekolah.value?.npsn,
         semester_id: semesterId.value,
         tahun_ajaran_id: tahunAjaranId.value,
-        url_erapor: urlErapor.value,
+        url_erapor: url_erapor.value,
         aksi: aksi,
         count: count,
       },
@@ -132,7 +132,7 @@ const kirimData = async (data, aksi, count, next) => {
     kirimData(ptk.data, ptk.aksi, ptk.count, true);
   }
 };
-const url_erapor = ref("http://localhost:8154");
+const url_erapor = ref();
 const refVForm = ref();
 const simpanUrl = () => {
   refVForm.value?.validate().then(({ valid: isValid }) => {
@@ -260,7 +260,7 @@ const storeUrl = async () => {
               <VCardText class="text-center" style="vertical-align: middle">
                 <VBtn
                   :loading="btnLoading"
-                  :disabled="btnLoading || isUrlErapor"
+                  :disabled="btnLoading || isurl_erapor"
                   size="large"
                   @click="kirimData(null, null, null, false)"
                 >
@@ -308,7 +308,7 @@ const storeUrl = async () => {
                       <td class="text-center">
                         <VBtn
                           :loading="btnLoading"
-                          :disabled="btnLoading || isUrlErapor"
+                          :disabled="btnLoading || isurl_erapor"
                           size="small"
                           @click="kirimData(item.data, item.aksi, item.count, false)"
                         >

@@ -398,7 +398,7 @@ class DapodikController extends Controller
     }
     public function kirim_data(){
         $text = 'Data Dapodik';
-        $sekolah_id = '57f58fe6-0a7c-4541-b607-759a47ad7493';//request()->sekolah_id;
+        $sekolah_id = request()->sekolah_id;
         $items = [];
         $next = FALSE;
         if(request()->aksi){
@@ -469,12 +469,13 @@ class DapodikController extends Controller
         }
         $data_sync = [
             'sekolah_id' => $sekolah_id,
+            'npsn' => request()->npsn,
             'tahun_ajaran_id' => request()->tahun_ajaran_id,
             'semester_id' => request()->semester_id,
             'table' => request()->aksi,
             'json' => prepare_send(json_encode($items)),
         ];
-        $data = kirimDapodik($sekolah_id, $data_sync, $text, $next);
+        $data = kirimDapodik($data_sync, $text, $next);
         return response()->json($data);
     }
 }
