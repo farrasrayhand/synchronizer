@@ -13,13 +13,16 @@ class Ptk extends Model
 	protected $primaryKey = 'ptk_id';
     protected $guarded = [];
     public $timestamps = false;
+    public function wilayah(){
+		return $this->hasOne(Wilayah::class, 'kode_wilayah', 'kode_wilayah');
+	}
     public function ptk_terdaftar()
     {
         return $this->HasOne(PtkTerdaftar::class, 'ptk_id', 'ptk_id');
     }
     public function tugas_tambahan()
     {
-        return $this->hasMany(TugasTambahan::class, 'ptk_id', 'ptk_id');
+        return $this->HasOne(TugasTambahan::class, 'ptk_id', 'ptk_id');
     }
     public function rwy_pend_formal()
     {

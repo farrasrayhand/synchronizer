@@ -11,4 +11,12 @@ class Wilayah extends Model
     protected $connection = 'dapodik';
 	protected $table = 'ref.mst_wilayah';
 	protected $primaryKey = 'kode_wilayah';
+	public function parent()
+    {
+        return $this->belongsTo(Wilayah::class, 'mst_kode_wilayah', 'kode_wilayah');
+    }
+    public function parrentRecursive()
+    {
+        return $this->parent()->with('parrentRecursive');
+    }
 }

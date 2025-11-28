@@ -20,39 +20,12 @@ use App\Models\Dudi;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Storage;
 use Artisan;
 
 class DapodikController extends Controller
 {
-    private function get_pengguna(){
-        $data = Pengguna::whereHas('role', function($query){
-            $query->where('peran_id', 10);
-            $query->where('sekolah_id', request()->sekolah_id);
-        })->first();
-        return $data?->pengguna_id;
-    }
-    private function get_sekolah()
-    {
-        return Sekolah::on('dapodik')->withWhereHas('pengguna', function ($query) {
-            $query->whereHas('role', function($query){
-                $query->where('peran_id', 10);
-            });
-        })->get();
-    }
-    public function user(Request $request)
-    {
-        return response()->json($request->user());
-    }
-    public function logout(Request $request)
-    {
-        $request->user()->tokens()->delete();
-        Auth::guard('web')->logout();
-        return response()->json([
-            'message' => 'Successfully logged out',
-        ]);
-    }
     public function index()
     {
         $sekolah = [];
@@ -61,6 +34,8 @@ class DapodikController extends Controller
         try {
             $sekolah = $this->get_sekolah();
             $user->sekolah = Sekolah::on('dapodik')->find($user->sekolah_id);
+            $user->erapor = Sekolah::find($user->sekolah_id);
+            $user->semester = Semester::where('periode_aktif', 1)->first();
         } catch (\Throwable $th) {
             //sdd($th->getMessage());
             $error = Str::of($th->getMessage())->contains('fe_sendauth');
@@ -352,6 +327,34 @@ class DapodikController extends Controller
         ];
         return response()->json($data);
     }
+    private function get_pengguna(){
+        $data = Pengguna::whereHas('role', function($query){
+            $query->where('peran_id', 10);
+            $query->where('sekolah_id', request()->sekolah_id);
+        })->first();
+        return $data?->pengguna_id;
+    }
+    private function get_sekolah()
+    {
+        return Sekolah::on('dapodik')->withWhereHas('pengguna', function ($query) {
+            $query->whereHas('role', function($query){
+                $query->where('peran_id', 10);
+            });
+        })->get();
+    }
+    public function user(Request $request)
+    {
+        return response()->json($request->user());
+    }
+    public function logout(Request $request)
+    {
+        $request->user()->tokens()->delete();
+        Auth::guard('web')->logout();
+        return response()->json([
+            'message' => 'Successfully logged out',
+        ]);
+    }
+    
     private function periode_aktif(){
         $find = Semester::where('periode_aktif', 1)->first();
         $data = [$find->tanggal_mulai, $find->tanggal_selesai];
@@ -360,56 +363,33 @@ class DapodikController extends Controller
     public function sekolah(Request $request)
     {
         $user = auth()->user();
-        $JenisPendaftaran = [];
-        $JenisPtk = [];
-        $wilayah = [];
-        if ($request->isMethod('post')) {
-            request()->validate(
+        request()->validate(
+            [
+                'sekolah_id' => 'required',
+            ],
+            [
+                'sekolah_id.required' => 'Sekolah tidak boleh kosong',
+            ]
+        );
+        $dapodik = Sekolah::on('dapodik')->find(request()->sekolah_id);
+        if ($dapodik) {
+            $sekolah = Sekolah::updateOrCreate(
                 [
-                    'sekolah_id' => 'required',
+                    'sekolah_id' => $request->sekolah_id,
                 ],
                 [
-                    'sekolah_id.required' => 'Sekolah tidak boleh kosong',
+                    'npsn' => $dapodik->npsn,
+                    'nama' => $dapodik->nama,
                 ]
             );
-            $dapodik = Sekolah::on('dapodik')->find(request()->sekolah_id);
-            if ($dapodik) {
-                $sekolah = Sekolah::updateOrCreate(
-                    [
-                        'sekolah_id' => $request->sekolah_id,
-                    ],
-                    [
-                        'npsn' => $dapodik->npsn,
-                        'nama' => $dapodik->nama,
-                    ]
-                );
-                $user->sekolah_id = request()->sekolah_id;
-                $user->pengguna_id = (request()->pengguna_id) ? request()->pengguna_id : $this->get_pengguna();
-                $user->save();
-            }
-            $data = [
-                'sekolah' => $sekolah,
-                'npsn' => $dapodik->npsn,
-            ];
-        } else {
-            $semester = NULL;
-            try {
-                $wilayah = Wilayah::where('id_level_wilayah', 1)->orderBy('kode_wilayah')->get();
-                $JenisPendaftaran = JenisPendaftaran::where('daftar_sekolah', 1)->whereNull('expired_date')->orderBy('jenis_pendaftaran_id')->get();
-                $JenisPtk = JenisPtk::whereNull('expired_date')->orderBy('jenis_ptk_id')->get();
-                $semester = Semester::where('periode_aktif', 1)->first();
-            } catch (\Throwable $th) {
-                //throw $th;
-            }
-            $data = [
-                'sekolah' => Sekolah::find($user->sekolah_id),
-                'jenis_pendaftaran' => $JenisPendaftaran,
-                'jenis_ptk' => $JenisPtk,
-                'semester' => $semester,
-                'wilayah' => $wilayah,
-                'jam_sinkron' => $this->jam_sinkron(),
-            ];
+            $user->sekolah_id = request()->sekolah_id;
+            $user->pengguna_id = (request()->pengguna_id) ? request()->pengguna_id : $this->get_pengguna();
+            $user->save();
         }
+        $data = [
+            'sekolah' => $sekolah,
+            'npsn' => $dapodik->npsn,
+        ];
         return response()->json($data);
     }
     public function reset(){
@@ -418,41 +398,83 @@ class DapodikController extends Controller
     }
     public function kirim_data(){
         $text = 'Data Dapodik';
-        if(request()->data){
-            if(request()->data == 'ptk'){
-                $text = 'Data PTK';
+        $sekolah_id = '57f58fe6-0a7c-4541-b607-759a47ad7493';//request()->sekolah_id;
+        $items = [];
+        $next = FALSE;
+        if(request()->aksi){
+            if(request()->aksi == 'url'){
+                $update = Sekolah::where('sekolah_id', request()->sekolah_id)->update(['url_erapor' => request()->url_erapor]);
+                if($update){
+                    $data = [
+                        'icon' => 'tabler-check',
+                        'color' => 'success',
+                        'title' => 'Berhasil!',
+                        'text' => 'URL e-Rapor SMK v8 berhasil disimpan',
+                    ];    
+                } else {
+                    $data = [
+                        'color' => 'error',
+                        'icon' => 'tabler-xbox-x',
+                        'title' => 'Gagal!',
+                        'text' => 'Sekolah tidak ditemukan',
+                    ];
+                }
+                return response()->json($data);
             }
-            if(request()->data == 'rombel'){
-                $text = 'Data Rombongan Belajar';
+            if(request()->aksi == 'ptk'){
+                $items = getPtk();
+                $text = request()->count.' Data PTK';
+                $next = 'rombel';
             }
-            if(request()->data == 'pd_aktif'){
-                $text = 'Data Peserta Didik Aktif';
+            if(request()->aksi == 'rombel'){
+                $items = getRombonganBelajar();
+                $text = request()->count.' Data Rombongan Belajar';
+                $next = 'pd_aktif';
             }
-            if(request()->data == 'pd_keluar'){
-                $text = 'Data Peserta Didik Keluar';
+            if(request()->aksi == 'pd_aktif'){
+                $items = getPd(1);
+                $text = request()->count.' Data Peserta Didik Aktif';
+                $next = 'pd_keluar';
             }
-            if(request()->data == 'anggota_matpil'){
-                $text = 'Data Anggota Rombel Matpel Pilihan';
+            if(request()->aksi == 'pd_keluar'){
+                $items = getPd(0);
+                $text = request()->count.' Data Peserta Didik Keluar';
+                $next = 'anggota_matpil';
             }
-            if(request()->data == 'pembelajaran'){
-                $text = 'Data Pembelajaran';
+            if(request()->aksi == 'anggota_matpil'){
+                $items = getAnggotaPilihan();
+                $text = request()->count.' Data Anggota Rombel Matpel Pilihan';
+                $next = 'pembelajaran';
             }
-            if(request()->data == 'ekskul'){
-                $text = 'Data Ekstrakurikuler';
+            if(request()->aksi == 'pembelajaran'){
+                $items = getPembelajaran();
+                $text = request()->count.' Data Pembelajaran';
+                $next = 'ekskul';
             }
-            if(request()->data == 'anggota_ekskul'){
-                $text = 'Data Anggota Ekstrakurikuler';
+            if(request()->aksi == 'ekskul'){
+                $items = getEkskul();
+                $text = request()->count.' Data Ekstrakurikuler';
+                $next = 'anggota_ekskul';
             }
-            if(request()->data == 'dudi'){
-                $text = 'Data DUDI';
+            if(request()->aksi == 'anggota_ekskul'){
+                $items = getAnggotaEkskul();
+                $text = request()->count.' Data Anggota Ekstrakurikuler';
+                $next = 'dudi';
+            }
+            if(request()->aksi == 'dudi'){
+                $items = getDudi();
+                $text = request()->count.' Data DUDI';
+                $next = FALSE;
             }
         }
-        $data = [
-            'icon' => 'tabler-check',
-            'color' => 'success',
-            'title' => 'Berhasil!',
-            'text' => $text .' berhasil dikirim',
+        $data_sync = [
+            'sekolah_id' => $sekolah_id,
+            'tahun_ajaran_id' => request()->tahun_ajaran_id,
+            'semester_id' => request()->semester_id,
+            'table' => request()->aksi,
+            'json' => prepare_send(json_encode($items)),
         ];
+        $data = kirimDapodik($sekolah_id, $data_sync, $text, $next);
         return response()->json($data);
     }
 }

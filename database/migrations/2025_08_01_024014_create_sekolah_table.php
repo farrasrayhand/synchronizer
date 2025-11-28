@@ -15,6 +15,7 @@ return new class extends Migration
             $table->uuid('sekolah_id');
             $table->string('npsn', 8);
             $table->string('nama');
+            $table->string('url_erapor')->nullable();
             $table->timestamps();
             $table->primary('sekolah_id');
         });

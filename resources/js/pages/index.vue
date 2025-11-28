@@ -12,6 +12,8 @@ const sekolah = ref();
 const items = ref([]);
 const error = ref(false);
 const loadingBody = ref(true);
+const isUrlErapor = ref(true);
+const urlErapor = ref();
 const clickMe = async () => {
   btnLoading.value = true;
   const find = items.value.find((s) => {
@@ -35,6 +37,8 @@ onMounted(async () => {
 const isDisabled = ref(false);
 const jumlah = ref(0);
 const table_sync = ref([]);
+const semesterId = ref();
+const tahunAjaranId = ref();
 const fetchData = async () => {
   loadingBody.value = true;
   isDisabled.value = true;
@@ -48,6 +52,10 @@ const fetchData = async () => {
       btnLoading.value = false;
       jumlah.value = getData.jumlah;
       table_sync.value = getData.table_sync;
+      isUrlErapor.value = getData.user?.erapor?.url_erapor ? false : true;
+      urlErapor.value = getData.user?.erapor?.url_erapor;
+      semesterId.value = getData.user?.semester?.semester_id;
+      tahunAjaranId.value = getData.user?.semester?.tahun_ajaran_id;
     }
   } catch (error) {
     console.error(error);
@@ -75,18 +83,75 @@ const notif = ref({
   text: null,
   color: null,
 });
+const sendMessage = ref(null);
 const isAlertVisible = ref(false);
-const kirimData = async (data) => {
+const kirimData = async (data, aksi, count, next) => {
+  if (data) {
+    btnLoading.value = true;
+    sendMessage.value = `Mengirim data ${data} (${count})`;
+    await $api("/kirim-data", {
+      method: "POST",
+      body: {
+        sekolah_id: sekolah.value?.sekolah_id,
+        semester_id: semesterId.value,
+        tahun_ajaran_id: tahunAjaranId.value,
+        url_erapor: urlErapor.value,
+        aksi: aksi,
+        count: count,
+      },
+      async onResponse({ response }) {
+        let getData = response._data;
+        console.log(next);
+        if (next) {
+          if (getData.next) {
+            let nextData = table_sync.value.find((s) => {
+              return s.aksi === getData.next;
+            });
+            console.log(nextData);
+            if (nextData) {
+              kirimData(nextData.data, nextData.aksi, nextData.count, getData.next);
+            }
+          } else {
+            notif.value = getData.notif;
+            isAlertVisible.value = true;
+            btnLoading.value = false;
+            sendMessage.value = null;
+          }
+        } else {
+          notif.value = getData;
+          isAlertVisible.value = true;
+          btnLoading.value = false;
+          sendMessage.value = null;
+        }
+      },
+    });
+  } else {
+    let ptk = table_sync.value.find((s) => {
+      return s.aksi === "ptk";
+    });
+    kirimData(ptk.data, ptk.aksi, ptk.count, true);
+  }
+};
+const url_erapor = ref("http://localhost:8154");
+const refVForm = ref();
+const simpanUrl = () => {
+  refVForm.value?.validate().then(({ valid: isValid }) => {
+    if (isValid) storeUrl();
+  });
+};
+const storeUrl = async () => {
   await $api("/kirim-data", {
     method: "POST",
     body: {
-      sekolah_id: sekolah_id.value,
-      data: data,
+      sekolah_id: sekolah.value?.sekolah_id,
+      url_erapor: url_erapor.value,
+      data: "url",
     },
     async onResponse({ response }) {
       let getData = response._data;
       notif.value = getData;
       isAlertVisible.value = true;
+      await fetchData();
     },
   });
 };
@@ -132,6 +197,36 @@ const kirimData = async (data) => {
         </VCol>
       </VRow>
       <template v-if="sekolah">
+        <VRow>
+          <VCol cols="12">
+            <VCard>
+              <VForm ref="refVForm" @submit.prevent="simpanUrl">
+                <VCardText>
+                  <AppTextField
+                    label="URL e-Rapor SMK v8. Contoh: http://localhost:8154 atau https://erapor.sekolahku.sch.id (Tanpa garis miring di akhir)"
+                    placeholder="URL e-Rapor SMK v8"
+                    v-model="url_erapor"
+                    :loading="btnLoading"
+                    :disabled="btnLoading"
+                    :rules="[requiredValidator, urlValidator]"
+                  >
+                    <template #append>
+                      <VBtn
+                        :icon="$vuetify.display.smAndDown"
+                        type="submit"
+                        :loading="btnLoading"
+                        :disabled="btnLoading"
+                      >
+                        <VIcon icon="tabler-device-floppy" color="#fff" size="22" />
+                        <span v-if="$vuetify.display.mdAndUp" class="ms-3">Simpan</span>
+                      </VBtn>
+                    </template>
+                  </AppTextField>
+                </VCardText>
+              </VForm>
+            </VCard>
+          </VCol>
+        </VRow>
         <VRow class="match-height">
           <VCol cols="6" xl="8" md="8" sm="6">
             <VCard>
@@ -165,9 +260,9 @@ const kirimData = async (data) => {
               <VCardText class="text-center" style="vertical-align: middle">
                 <VBtn
                   :loading="btnLoading"
-                  :disabled="btnLoading"
+                  :disabled="btnLoading || isUrlErapor"
                   size="large"
-                  @click="kirimData"
+                  @click="kirimData(null, null, null, false)"
                 >
                   <font-awesome-icon
                     icon="fa-solid fa-cloud-arrow-up"
@@ -179,11 +274,11 @@ const kirimData = async (data) => {
         </VRow>
         <VRow v-if="!loadingBody">
           <VCol cols="12">
-            <VAlert color="secondary" class="text-center">
-              <h3 class="text-white">DATA YANG AKAN DIKIRIM</h3>
+            <VAlert color="error" class="text-center" v-if="sendMessage">
+              <h3 class="text-white">{{ sendMessage }}</h3>
             </VAlert>
-            <VAlert color="error" class="text-center mt-4" v-if="error">
-              <h3 class="text-white">{{ message }}</h3>
+            <VAlert color="secondary" class="text-center" v-else>
+              <h3 class="text-white">DATA YANG AKAN DIKIRIM</h3>
             </VAlert>
           </VCol>
         </VRow>
@@ -213,9 +308,9 @@ const kirimData = async (data) => {
                       <td class="text-center">
                         <VBtn
                           :loading="btnLoading"
-                          :disabled="btnLoading"
+                          :disabled="btnLoading || isUrlErapor"
                           size="small"
-                          @click="kirimData(item.aksi)"
+                          @click="kirimData(item.data, item.aksi, item.count, false)"
                         >
                           Kirim Data
                         </VBtn>

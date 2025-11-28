@@ -11,6 +11,14 @@ class RombonganBelajar extends Model
     protected $connection = 'dapodik';
 	protected $table = 'rombongan_belajar';
 	protected $primaryKey = 'rombongan_belajar_id';
+    public function jurusan_sp()
+    {
+        return $this->hasOne(JurusanSp::class, 'jurusan_sp_id', 'jurusan_sp_id');
+    }
+    public function kurikulum()
+	{
+		return $this->hasOne(Kurikulum::class, 'kurikulum_id', 'kurikulum_id');
+	}
     public function semester()
     {
         return $this->belongsTo(Semester::class, 'semester_id', 'semester_id');
@@ -22,5 +30,9 @@ class RombonganBelajar extends Model
     public function kelas_ekskul()
     {
         return $this->hasOne(KelasEkskul::class, 'rombongan_belajar_id', 'rombongan_belajar_id');
+    }
+    public function ruang()
+    {
+        return $this->hasOne(Ruang::class, 'id_ruang', 'id_ruang');
     }
 }

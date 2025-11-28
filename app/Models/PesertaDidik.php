@@ -39,4 +39,11 @@ class PesertaDidik extends Model
     {
         return $this->hasOne(AnggotaRombel::class, 'peserta_didik_id', 'peserta_didik_id');
     }
+    public function wilayah(){
+		return $this->hasOne(Wilayah::class, 'kode_wilayah', 'kode_wilayah');
+	}
+    public function diterima_dikelas()
+    {
+        return $this->hasOne(AnggotaRombel::class, 'peserta_didik_id', 'peserta_didik_id');
+    }
 }
