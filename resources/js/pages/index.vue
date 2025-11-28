@@ -145,7 +145,7 @@ const storeUrl = async () => {
     body: {
       sekolah_id: sekolah.value?.sekolah_id,
       url_erapor: url_erapor.value,
-      data: "url",
+      aksi: "url",
     },
     async onResponse({ response }) {
       let getData = response._data;
