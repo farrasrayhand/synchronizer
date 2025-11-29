@@ -71,6 +71,21 @@ const reset = async () => {
   btnLoading.value = false;
   appLogout();
 };
+const router = useRouter();
+const ability = useAbility();
+const userData = useCookie("userData");
+const appLogout = async () => {
+  console.log("appLogout");
+  userData.value = null;
+  useCookie("accessToken").value = null;
+  useCookie("userData").value = null;
+  useCookie("userAbilityRules").value = null;
+  ability.update([]);
+  //window.location.replace('/login')
+  await nextTick(() => {
+    router.replace("/login");
+  });
+};
 const connectToDapo = async () => {
   console.log("connectToDapo");
   await useNonApi(createUrl("normalkan"));
@@ -155,6 +170,9 @@ const storeUrl = async () => {
     },
   });
 };
+const resetApp = () => {
+  isDialogVisible.value = true;
+};
 </script>
 <template>
   <VContainer>
@@ -165,10 +183,21 @@ const storeUrl = async () => {
         </template>
         <VCardTitle class="text-white"> e-Rapor SMK Synchronizer </VCardTitle>
       </VCardItem>
-      <VCardText>
-        <p class="clamp-text text-white mb-0">
+      <VCardText class="d-flex justify-space-between align-center flex-wrap">
+        <div class="text-no-wrap">
           Tools untuk mengirim data Dapodik Lokal ke Aplikasi e-Rapor SMK Versi 8!
-        </p>
+        </div>
+
+        <div class="d-flex align-center">
+          <IconBtn class="me-1" @click="appLogout">
+            <VTooltip activator="parent" location="left"> Logout </VTooltip>
+            <VIcon icon="tabler-power" />
+          </IconBtn>
+          <IconBtn class="me-1" @click="resetApp" v-if="sekolah">
+            <VTooltip activator="parent" location="left"> Reset </VTooltip>
+            <VIcon icon="tabler-restore" />
+          </IconBtn>
+        </div>
       </VCardText>
     </VCard>
     <VCard class="mt-4" v-if="error">
