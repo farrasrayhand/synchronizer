@@ -75,7 +75,7 @@ const router = useRouter();
 const ability = useAbility();
 const userData = useCookie("userData");
 const appLogout = async () => {
-  console.log("appLogout");
+  //console.log("appLogout");
   userData.value = null;
   useCookie("accessToken").value = null;
   useCookie("userData").value = null;
@@ -87,7 +87,7 @@ const appLogout = async () => {
   });
 };
 const connectToDapo = async () => {
-  console.log("connectToDapo");
+  //console.log("connectToDapo");
   await useNonApi(createUrl("normalkan"));
   await fetchData();
 };
@@ -116,13 +116,13 @@ const kirimData = async (data, aksi, count, next) => {
       },
       async onResponse({ response }) {
         let getData = response._data;
-        console.log(next);
+        //console.log(next);
         if (next) {
           if (getData.next) {
             let nextData = table_sync.value.find((s) => {
               return s.aksi === getData.next;
             });
-            console.log(nextData);
+            //console.log(nextData);
             if (nextData) {
               kirimData(nextData.data, nextData.aksi, nextData.count, getData.next);
             }

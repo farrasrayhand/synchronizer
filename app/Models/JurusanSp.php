@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class JurusanSp extends Model
 {
+    public $keyType = 'string';
     protected $connection = 'dapodik';
     protected $table = 'jurusan_sp';
 	protected $primaryKey = 'jurusan_sp_id';

@@ -193,7 +193,7 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
 	},
 
 	_attachObserver: function _attachObserver (node) {
-// 		console.log('Gonna observe', node);
+// 		//console.log('Gonna observe', node);
 
 		var observer = new MutationObserver(this._onMutations.bind(this));
 
@@ -244,7 +244,7 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
 
 	_onMutatedImage: function _onMutatedImage (imgNode) {
 // 		if (imgNode.src) {
-// 			console.log('caught mutated image: ', imgNode.src);
+// 			//console.log('caught mutated image: ', imgNode.src);
 // 		}
 
 		var coords;
@@ -280,12 +280,12 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
 			imgNode.style.visibility = 'hidden';
 
 			var key = tileKey + '/' + sublayer;
-			// console.log('mutation for tile', key)
+			// //console.log('mutation for tile', key)
 			//store img so it can also be used in subsequent tile requests
 			this._freshTiles[key] = imgNode;
 
 			if (key in this._tileCallbacks && this._tileCallbacks[key]) {
-// console.log('Fullfilling callback ', key);
+// //console.log('Fullfilling callback ', key);
 				//fullfill most recent tileCallback because there maybe callbacks that will never get a 
 				//corresponding mutation (because map moved to quickly...)
 				this._tileCallbacks[key].pop()(imgNode); 
@@ -319,7 +319,7 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
 				var imgNode = this._freshTiles[key2];
 				tileContainer.appendChild(this._clone(imgNode));
 				tileContainer.dataset.pending--;
-// 				console.log('Got ', key2, ' from _freshTiles');
+// 				//console.log('Got ', key2, ' from _freshTiles');
 			} else {
 				this._tileCallbacks[key2] = this._tileCallbacks[key2] || [];
 				this._tileCallbacks[key2].push( (function (c/*, k2*/) {
@@ -327,7 +327,7 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
 						c.appendChild(this._clone(imgNode));
 						c.dataset.pending--;
 						if (!parseInt(c.dataset.pending)) { done(); }
-// 						console.log('Sent ', k2, ' to _tileCallbacks, still ', c.dataset.pending, ' images to go');
+// 						//console.log('Sent ', k2, ' to _tileCallbacks, still ', c.dataset.pending, ' images to go');
 					}.bind(this);
 				}.bind(this))(tileContainer/*, key2*/) );
 			}
@@ -443,7 +443,7 @@ L.GridLayer.GoogleMutant = L.GridLayer.extend({
 				var stillVisible = this._map && tileBounds.overlaps(gMapBounds) && (tileZoom == gZoom);
 
 				if (!stillVisible) delete this._freshTiles[key2]; 
-//				console.log('Prunning of ', key, (!stillVisible))
+//				//console.log('Prunning of ', key, (!stillVisible))
 			}
 		}
 	}

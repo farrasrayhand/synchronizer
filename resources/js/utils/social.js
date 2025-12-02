@@ -10,6 +10,6 @@ const options = {
         },
     }
 }
-console.log(themeConfig.app.url);
-console.log(options);
+//console.log(themeConfig.app.url);
+//console.log(options);
 export const Oauth = new UniversalSocialauth(axios, options)
