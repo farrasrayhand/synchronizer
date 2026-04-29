@@ -12,6 +12,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('sekolah', [DapodikController::class, 'index']);
     Route::post('sekolah', [DapodikController::class, 'sekolah']);
     Route::post('kirim-data', [DapodikController::class, 'kirim_data']);
+    Route::post('register', [DapodikController::class, 'register']);
     Route::get('reset', [DapodikController::class, 'reset']);
     Route::get('/user', function (Request $request) {
         return $request->user();

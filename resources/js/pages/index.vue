@@ -13,6 +13,7 @@ const items = ref([]);
 const error = ref(false);
 const loadingBody = ref(true);
 const isurl_erapor = ref(true);
+const versiApp = ref(null);
 const clickMe = async () => {
   btnLoading.value = true;
   const find = items.value.find((s) => {
@@ -38,6 +39,7 @@ const jumlah = ref(0);
 const table_sync = ref([]);
 const semesterId = ref();
 const tahunAjaranId = ref();
+const cekSekolah = ref(false);
 const fetchData = async () => {
   loadingBody.value = true;
   isDisabled.value = true;
@@ -55,6 +57,8 @@ const fetchData = async () => {
       url_erapor.value = getData.user?.erapor?.url_erapor;
       semesterId.value = getData.user?.semester?.semester_id;
       tahunAjaranId.value = getData.user?.semester?.tahun_ajaran_id;
+      cekSekolah.value = getData.cek_sekolah?.success;
+      versiApp.value = getData.versiApp;
     }
   } catch (error) {
     console.error(error);
@@ -127,7 +131,7 @@ const kirimData = async (data, aksi, count, next) => {
               kirimData(nextData.data, nextData.aksi, nextData.count, getData.next);
             }
           } else {
-            notif.value = getData.notif;
+            notif.value = getData;
             isAlertVisible.value = true;
             btnLoading.value = false;
             sendMessage.value = null;
@@ -146,6 +150,30 @@ const kirimData = async (data, aksi, count, next) => {
     });
     kirimData(ptk.data, ptk.aksi, ptk.count, true);
   }
+};
+const regisErapor = async () => {
+  const getSekolah = items.value.find((s) => {
+    return s.sekolah_id === sekolah.value?.sekolah_id;
+  });
+  btnLoading.value = true;
+  sendMessage.value = `Proses Registrasi ke e-Rapor SMK v8`;
+  await $api("/register", {
+    method: "POST",
+    body: {
+      sekolah: getSekolah,
+      url_erapor: url_erapor.value,
+    },
+    async onResponse({ response }) {
+      let getData = response._data;
+      notif.value = getData;
+      isAlertVisible.value = true;
+      btnLoading.value = false;
+      sendMessage.value = null;
+      await nextTick(async () => {
+        await fetchData();
+      });
+    },
+  });
 };
 const url_erapor = ref();
 const refVForm = ref();
@@ -181,7 +209,9 @@ const resetApp = () => {
         <template #prepend>
           <VIcon size="1.9rem" color="white" icon="tabler-database" />
         </template>
-        <VCardTitle class="text-white"> e-Rapor SMK Synchronizer </VCardTitle>
+        <VCardTitle class="text-white">
+          e-Rapor SMK Synchronizer {{ versiApp }}</VCardTitle
+        >
       </VCardItem>
       <VCardText class="d-flex justify-space-between align-center flex-wrap">
         <div class="text-no-wrap">
@@ -257,12 +287,12 @@ const resetApp = () => {
           </VCol>
         </VRow>
         <VRow class="match-height">
-          <VCol cols="6" xl="8" md="8" sm="6">
+          <VCol cols="12" xl="8" md="8" sm="6">
             <VCard>
               <VTable class="text-no-wrap">
                 <tbody>
                   <tr>
-                    <td rowspan="3" width="10%" style="border: none">
+                    <td rowspan="4" width="10%" style="border: none">
                       <img
                         src="/images/logo-erapor.png"
                         alt="Logo e-Rapor SMK"
@@ -280,22 +310,40 @@ const resetApp = () => {
                     <td style="border: none">Alamat</td>
                     <td style="border: none">{{ sekolah.alamat_jalan }}</td>
                   </tr>
+                  <tr>
+                    <td style="border: none">Akun Dapodik</td>
+                    <td style="border: none">{{ sekolah.pengguna?.username }}</td>
+                  </tr>
                 </tbody>
               </VTable>
             </VCard>
           </VCol>
-          <VCol cols="6" xl="4" md="4" sm="6">
+          <VCol cols="12" xl="4" md="4" sm="6">
             <VCard>
-              <VCardText class="text-center" style="vertical-align: middle">
+              <VCardText class="text-center pt-12">
                 <VBtn
+                  block
                   :loading="btnLoading"
                   :disabled="btnLoading || isurl_erapor"
                   size="large"
                   @click="kirimData(null, null, null, false)"
+                  v-if="cekSekolah"
                 >
                   <font-awesome-icon
                     icon="fa-solid fa-cloud-arrow-up"
                   />&nbsp;&nbsp;&nbsp;<strong>KIRIM DATA</strong>
+                </VBtn>
+                <VBtn
+                  block
+                  :loading="btnLoading"
+                  :disabled="btnLoading || isurl_erapor"
+                  size="large"
+                  @click="regisErapor"
+                  v-else
+                >
+                  <font-awesome-icon
+                    icon="fa-solid fa-cloud-arrow-up"
+                  />&nbsp;&nbsp;&nbsp;<strong>Register e-Rapor</strong>
                 </VBtn>
               </VCardText>
             </VCard>
@@ -337,7 +385,7 @@ const resetApp = () => {
                       <td class="text-center">
                         <VBtn
                           :loading="btnLoading"
-                          :disabled="btnLoading || isurl_erapor"
+                          :disabled="btnLoading || isurl_erapor || item.count === 0"
                           size="small"
                           @click="kirimData(item.data, item.aksi, item.count, false)"
                         >

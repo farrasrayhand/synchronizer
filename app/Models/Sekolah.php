@@ -23,4 +23,7 @@ class Sekolah extends Model
     {
         return $this->belongsTo(Yayasan::class, 'yayasan_id', 'yayasan_id');
     }
+    public function wilayah(){
+		return $this->hasOne(wilayah::class, 'kode_wilayah', 'kode_wilayah');
+	}
 }

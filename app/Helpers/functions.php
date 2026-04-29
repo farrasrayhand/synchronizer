@@ -1,6 +1,7 @@
 <?php
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Client\RequestException;
+use App\Models\Sekolah;
 use App\Models\Ptk;
 use App\Models\RombonganBelajar;
 use App\Models\PesertaDidik;
@@ -42,8 +43,11 @@ function periode_aktif($semester_id){
     $data = [$find->tanggal_mulai, $find->tanggal_selesai];
     return $data;
 }
-function getPtk($sekolah_id, $tahun_ajaran_id){
-    $data = Ptk::with([
+function getSekolah($sekolah_id, $tahun_ajaran_id){
+    return Sekolah::find($sekolah_id);
+}
+function getPtk($sekolah_id, $tahun_ajaran_id, $data_sync){
+    Ptk::with([
         'ptk_terdaftar' => function($query) use ($sekolah_id, $tahun_ajaran_id){
             $query->where('sekolah_id', $sekolah_id);
             $query->where('tahun_ajaran_id', $tahun_ajaran_id);
@@ -70,11 +74,20 @@ function getPtk($sekolah_id, $tahun_ajaran_id){
             $query->whereNull('jenis_keluar_id');
             $query->where('soft_delete', 0);
         });
-    })->orderBy('nama')->get();
-    return $data;
+    })->orderBy('ptk_id')->chunk(500, function($items) use ($data_sync){
+        $data_sync['json'] = prepare_send(json_encode($items));
+        kirimDapodik($data_sync, $data_sync['text'], $data_sync['next']);
+    });
+    return [
+        'icon' => 'tabler-check',
+        'color' => 'success',
+        'title' => 'Berhasil!',
+        'text' => $data_sync['text'].' berhasil dikirim',
+        'next' => $data_sync['next'],
+    ];
 }
-function getRombonganBelajar($sekolah_id, $tahun_ajaran_id, $semester_id){
-    $data = RombonganBelajar::with([
+function getRombonganBelajar($sekolah_id, $tahun_ajaran_id, $semester_id, $data_sync){
+    RombonganBelajar::with([
         'jurusan_sp' => function($query){
             $query->where('soft_delete', 0);
             $query->with([
@@ -101,11 +114,20 @@ function getRombonganBelajar($sekolah_id, $tahun_ajaran_id, $semester_id){
 		$query->where('sekolah_id', $sekolah_id);
         $query->whereIn('jenis_rombel', [1, 8, 9, 16]);
         $query->where('soft_delete', 0);
-    })->orderBy('nama')->get();
-    return $data;
+    })->orderBy('rombongan_belajar_id')->chunk(500, function($items) use ($data_sync){
+        $data_sync['json'] = prepare_send(json_encode($items));
+        kirimDapodik($data_sync, $data_sync['text'], $data_sync['next']);
+    });
+    return [
+        'icon' => 'tabler-check',
+        'color' => 'success',
+        'title' => 'Berhasil!',
+        'text' => $data_sync['text'].' berhasil dikirim',
+        'next' => $data_sync['next'],
+    ];
 }
-function getPd($status, $sekolah_id, $tahun_ajaran_id, $semester_id){
-    $data = PesertaDidik::with([
+function getPd($status, $sekolah_id, $tahun_ajaran_id, $semester_id, $data_sync){
+    PesertaDidik::with([
         'anggota_rombel' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
             $query->withWhereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
@@ -174,11 +196,20 @@ function getPd($status, $sekolah_id, $tahun_ajaran_id, $semester_id){
                 });
             });
         });
-    })->orderBy('peserta_didik_id')->get();
-    return $data;
+    })->orderBy('peserta_didik_id')->chunk(500, function($items) use ($data_sync){
+        $data_sync['json'] = prepare_send(json_encode($items));
+        kirimDapodik($data_sync, $data_sync['text'], $data_sync['next']);
+    });
+    return [
+        'icon' => 'tabler-check',
+        'color' => 'success',
+        'title' => 'Berhasil!',
+        'text' => $data_sync['text'].' berhasil dikirim',
+        'next' => $data_sync['next'],
+    ];
 }
-function getAnggotaPilihan($sekolah_id, $tahun_ajaran_id, $semester_id){
-    $data = AnggotaRombel::with(['rombongan_belajar', 'pd' => function($query){
+function getAnggotaPilihan($sekolah_id, $tahun_ajaran_id, $semester_id, $data_sync){
+    AnggotaRombel::with(['rombongan_belajar', 'pd' => function($query){
         $query->where('soft_delete', 0);
     }])->where(function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->whereHas('rombongan_belajar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
@@ -202,11 +233,20 @@ function getAnggotaPilihan($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->whereNull('jenis_keluar_id');
         });
         $query->where('soft_delete', 0);
-    })->get();
-    return $data;
+    })->orderBy('anggota_rombel_id')->chunk(500, function($items) use ($data_sync){
+        $data_sync['json'] = prepare_send(json_encode($items));
+        kirimDapodik($data_sync, $data_sync['text'], $data_sync['next']);
+    });
+    return [
+        'icon' => 'tabler-check',
+        'color' => 'success',
+        'title' => 'Berhasil!',
+        'text' => $data_sync['text'].' berhasil dikirim',
+        'next' => $data_sync['next'],
+    ];
 }
-function getEkskul($sekolah_id, $tahun_ajaran_id, $semester_id){
-    $data = KelasEkskul::with([
+function getEkskul($sekolah_id, $tahun_ajaran_id, $semester_id, $data_sync){
+    KelasEkskul::with([
         'rombongan_belajar' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('soft_delete', 0);
             $query->withWhereHas('wali_kelas', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
@@ -240,11 +280,20 @@ function getEkskul($sekolah_id, $tahun_ajaran_id, $semester_id){
                 });
             });
         });
-    })->get();
-    return $data;
+    })->orderBy('id_kelas_ekskul')->chunk(500, function($items) use ($data_sync){
+        $data_sync['json'] = prepare_send(json_encode($items));
+        kirimDapodik($data_sync, $data_sync['text'], $data_sync['next']);
+    });
+    return [
+        'icon' => 'tabler-check',
+        'color' => 'success',
+        'title' => 'Berhasil!',
+        'text' => $data_sync['text'].' berhasil dikirim',
+        'next' => $data_sync['next'],
+    ];
 }
-function getPembelajaran($sekolah_id, $tahun_ajaran_id, $semester_id){
-    $data = Pembelajaran::withWhereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+function getPembelajaran($sekolah_id, $tahun_ajaran_id, $semester_id, $data_sync){
+    Pembelajaran::withWhereHas('ptk_terdaftar', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->where('ptk.soft_delete', 0);
         $query->where('ptk_terdaftar.soft_delete', 0);
         $query->whereNull('jenis_keluar_id');
@@ -341,11 +390,20 @@ function getPembelajaran($sekolah_id, $tahun_ajaran_id, $semester_id){
                 });
             });
         });
-    })->orderBy('pembelajaran_id')->get();
-    return $data;
+    })->orderBy('pembelajaran_id')->chunk(500, function($items) use ($data_sync){
+        $data_sync['json'] = prepare_send(json_encode($items));
+        kirimDapodik($data_sync, $data_sync['text'], $data_sync['next']);
+    });
+    return [
+        'icon' => 'tabler-check',
+        'color' => 'success',
+        'title' => 'Berhasil!',
+        'text' => $data_sync['text'].' berhasil dikirim',
+        'next' => $data_sync['next'],
+    ];
 }
-function getAnggotaEkskul($sekolah_id, $tahun_ajaran_id, $semester_id){
-    $data = AnggotaRombel::with(['rombongan_belajar', 'pd' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
+function getAnggotaEkskul($sekolah_id, $tahun_ajaran_id, $semester_id, $data_sync){
+    AnggotaRombel::with(['rombongan_belajar', 'pd' => function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->where('soft_delete', 0);
         $query->whereHas('registrasi_peserta_didik', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
             $query->where('sekolah_id', $sekolah_id);
@@ -410,10 +468,19 @@ function getAnggotaEkskul($sekolah_id, $tahun_ajaran_id, $semester_id){
                 $query->whereNull('jenis_keluar_id');
             });
         });
-    })->get();
-    return $data;
+    })->orderBy('anggota_rombel_id')->chunk(500, function($items) use ($data_sync){
+        $data_sync['json'] = prepare_send(json_encode($items));
+        kirimDapodik($data_sync, $data_sync['text'], $data_sync['next']);
+    });
+    return [
+        'icon' => 'tabler-check',
+        'color' => 'success',
+        'title' => 'Berhasil!',
+        'text' => $data_sync['text'].' berhasil dikirim',
+        'next' => $data_sync['next'],
+    ];
 }
-function getDudi($sekolah_id, $tahun_ajaran_id, $semester_id){
+function getDudi($sekolah_id, $tahun_ajaran_id, $semester_id, $data_sync){
     $data = Dudi::withWhereHas('mou', function($query) use ($sekolah_id, $tahun_ajaran_id, $semester_id){
         $query->where('soft_delete', 0);
         $query->where('sekolah_id', $sekolah_id);
@@ -433,7 +500,17 @@ function getDudi($sekolah_id, $tahun_ajaran_id, $semester_id){
                 },
             ]);
         }]);
-    })->orderBy('dudi_id')->get();
+    })->orderBy('dudi_id')->chunk(500, function($items) use ($data_sync){
+        $data_sync['json'] = prepare_send(json_encode($items));
+        kirimDapodik($data_sync, $data_sync['text'], $data_sync['next']);
+    });
+    return [
+        'icon' => 'tabler-check',
+        'color' => 'success',
+        'title' => 'Berhasil!',
+        'text' => $data_sync['text'].' berhasil dikirim',
+        'next' => $data_sync['next'],
+    ];
     return $data;
 }
 function kirimDapodik($data_sync, $text, $next, $url_erapor = NULL){
@@ -503,6 +580,82 @@ function kirimDapodik($data_sync, $text, $next, $url_erapor = NULL){
                     'title' => 'Gagal!',
                     'text' => $e->getMessage(),
                 ]
+            ];
+        }
+    }
+    return $data;
+}
+function cekSekolah($data_sync, $url_erapor){
+    $url_erapor = $url_erapor ?? request()->url_erapor;
+    try {
+        $response = Http::withOptions([
+            'verify' => false,
+        ])->withHeaders([
+            'x-api-key' => $data_sync['sekolah_id'],
+            'x-api-npsn' => $data_sync['npsn'],
+        ])->retry(3, 100)->post($url_erapor.'/api/sinkronisasi/synchronizer', $data_sync);
+        $result = $response->json();
+        if($response->successful()){
+            $data = [
+                'success' => TRUE,
+                'sekolah' => $result,
+                'message' => NULL,
+            ];
+        } else {
+            $data = [
+                'success' => FALSE,
+                'sekolah' => NULL,
+                'message' => NULL,
+            ];
+        }
+    } catch (RequestException $e) {
+        if ($e->response->status() === 401) {
+            $data = [
+                'success' => FALSE,
+                'sekolah' => NULL,
+                'message' => 'Sekolah tidak ditemukan',
+            ];
+        } else {
+            $data = [
+                'success' => FALSE,
+                'sekolah' => NULL,
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+    return $data;
+}
+function registrasi($data_sync){
+    $url_erapor = $data_sync['url_erapor'] ?? request()->url_erapor;
+    try {
+        $response = Http::withOptions([
+            'verify' => false,
+        ])->retry(3, 100)->post($url_erapor.'/api/sinkronisasi/register', $data_sync);
+        $result = $response->json();
+        if($response->successful()){
+            $data = $result;
+        } else {
+            $data = [
+                'color' => 'error',
+                'icon' => 'tabler-xbox-x',
+                'title' => 'Gagal!',
+                'text' => 'Registrasi Gagal. Silahkan coba beberapa saat lagi!',
+            ];
+        }
+    } catch (RequestException $e) {
+        if ($e->response->status() === 401) {
+            $data = [
+                'color' => 'error',
+                'icon' => 'tabler-xbox-x',
+                'title' => 'Gagal!',
+                'text' => 'Sekolah tidak ditemukan',
+            ];
+        } else {
+            $data = [
+                'color' => 'error',
+                'icon' => 'tabler-xbox-x',
+                'title' => 'Error!',
+                'text' => $e->getMessage(),
             ];
         }
     }

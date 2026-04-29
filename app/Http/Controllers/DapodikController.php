@@ -33,7 +33,11 @@ class DapodikController extends Controller
         $user = auth()->user();
         try {
             $sekolah = $this->get_sekolah();
-            $user->sekolah = Sekolah::on('dapodik')->find($user->sekolah_id);
+            $user->sekolah = Sekolah::on('dapodik')->withWhereHas('pengguna', function ($query) {
+                $query->whereHas('role', function($query){
+                    $query->where('peran_id', 10);
+                });
+            })->find($user->sekolah_id);
             $user->erapor = Sekolah::find($user->sekolah_id);
             $user->semester = Semester::where('periode_aktif', 1)->first();
         } catch (\Throwable $th) {
@@ -319,11 +323,18 @@ class DapodikController extends Controller
             }
         }
         $data = [
+            'versiApp' => 'v2.0.0',
             'sekolah' => $sekolah,
             'user' => $user,
             'jumlah' => $jumlah,
             'table_sync' => $table_sync,
             'error' => $error,
+            'cek_sekolah' => ($user->sekolah_id && $user->erapor && $user->erapor->url_erapor) ? cekSekolah([
+                'sekolah_id' => $user->sekolah_id,
+                'npsn' => $user->sekolah->npsn,
+                'table' => 'cek_sekolah',
+                'json' => prepare_send(json_encode(['sekolah_id' => $user->sekolah_id])),
+            ], $user->erapor->url_erapor) : NULL,
         ];
         return response()->json($data);
     }
@@ -336,7 +347,9 @@ class DapodikController extends Controller
     }
     private function get_sekolah()
     {
-        return Sekolah::on('dapodik')->withWhereHas('pengguna', function ($query) {
+        return Sekolah::on('dapodik')->with([
+            'wilayah.parrentRecursive',
+        ])->withWhereHas('pengguna', function ($query) {
             $query->whereHas('role', function($query){
                 $query->where('peran_id', 10);
             });
@@ -402,9 +415,17 @@ class DapodikController extends Controller
         $items = [];
         $next = FALSE;
         if(request()->aksi){
+            $data_sync = [
+                'sekolah_id' => $sekolah_id,
+                'npsn' => request()->npsn,
+                'tahun_ajaran_id' => request()->tahun_ajaran_id,
+                'semester_id' => request()->semester_id,
+                'table' => request()->aksi,
+            ];
             if(request()->aksi == 'url'){
                 $update = Sekolah::where('sekolah_id', request()->sekolah_id)->update(['url_erapor' => request()->url_erapor]);
-                if($update){
+                $items = getSekolah(request()->sekolah_id, request()->tahun_ajaran_id);
+                /*if($update){
                     $data = [
                         'icon' => 'tabler-check',
                         'color' => 'success',
@@ -419,63 +440,58 @@ class DapodikController extends Controller
                         'text' => 'Sekolah tidak ditemukan',
                     ];
                 }
-                return response()->json($data);
+                return response()->json($data);*/
             }
             if(request()->aksi == 'ptk'){
-                $items = getPtk(request()->sekolah_id, request()->tahun_ajaran_id);
-                $text = request()->count.' Data PTK';
-                $next = 'rombel';
+                $data_sync['text'] = request()->count.' Data PTK';
+                $data_sync['next'] = 'rombel';
+                $data = getPtk(request()->sekolah_id, request()->tahun_ajaran_id, $data_sync);
             }
             if(request()->aksi == 'rombel'){
-                $items = getRombonganBelajar(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
-                $text = request()->count.' Data Rombongan Belajar';
-                $next = 'pd_aktif';
+                $data_sync['text'] = request()->count.' Data Rombongan Belajar';
+                $data_sync['next'] = 'pd_aktif';
+                $data = getRombonganBelajar(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id, $data_sync);
             }
             if(request()->aksi == 'pd_aktif'){
-                $items = getPd(1, request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
-                $text = request()->count.' Data Peserta Didik Aktif';
-                $next = 'pd_keluar';
+                $data_sync['text'] = request()->count.' Data Peserta Didik Aktif';
+                $data_sync['next'] = 'pd_keluar';
+                $data = getPd(1, request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id, $data_sync);
             }
             if(request()->aksi == 'pd_keluar'){
-                $items = getPd(0, request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
-                $text = request()->count.' Data Peserta Didik Keluar';
-                $next = 'anggota_matpil';
+                $data_sync['text'] = request()->count.' Data Peserta Didik Keluar';
+                $data_sync['next'] = 'anggota_matpil';
+                $data = getPd(0, request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id, $data_sync);
             }
             if(request()->aksi == 'anggota_matpil'){
-                $items = getAnggotaPilihan(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
-                $text = request()->count.' Data Anggota Rombel Matpel Pilihan';
-                $next = 'pembelajaran';
+                $data_sync['text'] = request()->count.' Data Anggota Rombel Matpel Pilihan';
+                $data_sync['next'] = 'pembelajaran';
+                $data = getAnggotaPilihan(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id, $data_sync);
             }
             if(request()->aksi == 'pembelajaran'){
-                $items = getPembelajaran(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
-                $text = request()->count.' Data Pembelajaran';
-                $next = 'ekskul';
+                $data_sync['text'] = request()->count.' Data Pembelajaran';
+                $data_sync['next'] = 'ekskul';
+                $data = getPembelajaran(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id, $data_sync);
             }
             if(request()->aksi == 'ekskul'){
-                $items = getEkskul(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
-                $text = request()->count.' Data Ekstrakurikuler';
-                $next = 'anggota_ekskul';
+                $data_sync['text'] = request()->count.' Data Ekstrakurikuler';
+                $data_sync['next'] = 'anggota_ekskul';
+                $data = getEkskul(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id, $data_sync);
             }
             if(request()->aksi == 'anggota_ekskul'){
-                $items = getAnggotaEkskul(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
-                $text = request()->count.' Data Anggota Ekstrakurikuler';
-                $next = 'dudi';
+                $data_sync['text'] = request()->count.' Data Anggota Ekstrakurikuler';
+                $data_sync['next'] = 'dudi';
+                $data = getAnggotaEkskul(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id, $data_sync);
             }
             if(request()->aksi == 'dudi'){
-                $items = getDudi(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id);
-                $text = request()->count.' Data DUDI';
-                $next = FALSE;
+                $data_sync['text'] = request()->count.' Data DUDI';
+                $data_sync['next'] = FALSE;
+                $data = getDudi(request()->sekolah_id, request()->tahun_ajaran_id, request()->semester_id, $data_sync);
             }
         }
-        $data_sync = [
-            'sekolah_id' => $sekolah_id,
-            'npsn' => request()->npsn,
-            'tahun_ajaran_id' => request()->tahun_ajaran_id,
-            'semester_id' => request()->semester_id,
-            'table' => request()->aksi,
-            'json' => prepare_send(json_encode($items)),
-        ];
-        $data = kirimDapodik($data_sync, $text, $next);
+        //$data = kirimDapodik($data_sync, $text, $data_sync['next']);
         return response()->json($data);
+    }
+    public function register(){
+        return response()->json(registrasi(request()->all()));
     }
 }
