@@ -78,64 +78,63 @@ class Kirim extends Command
     }
     private function kirim_data($aksi, $user){
         $semester = Semester::where('periode_aktif', 1)->first();
-        //$text = 'Data Dapodik';
-        $items = [];
-        $next = FALSE;
+        
+        $data_sync = [
+            'sekolah_id' => $user->sekolah_id,
+            'npsn' => $user->sekolah->npsn,
+            'tahun_ajaran_id' => $semester->tahun_ajaran_id,
+            'semester_id' => $semester->semester_id,
+            'table' => $aksi,
+            'url_erapor' => $user->sekolah->url_erapor,
+        ];
+        
+        $data = null;
         if($aksi){
             if($aksi == 'ptk'){
-                $items = getPtk($user->sekolah_id, $semester->tahun_ajaran_id);
-                $text = 'Data PTK';
-                $next = 'rombongan_belajar';
+                $data_sync['text'] = 'Data PTK';
+                $data_sync['next'] = 'rombongan_belajar';
+                $data = getPtk($user->sekolah_id, $semester->tahun_ajaran_id, $data_sync);
             }
             if($aksi == 'rombongan_belajar'){
-                $items = getRombonganBelajar($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id);
-                $text = 'Data Rombongan Belajar';
-                $next = 'peserta_didik_aktif';
+                $data_sync['text'] = 'Data Rombongan Belajar';
+                $data_sync['next'] = 'peserta_didik_aktif';
+                $data = getRombonganBelajar($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id, $data_sync);
             }
             if($aksi == 'peserta_didik_aktif'){
-                $items = getPd(1, $user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id);
-                $text = 'Data Peserta Didik Aktif';
-                $next = 'peserta_didik_keluar';
+                $data_sync['text'] = 'Data Peserta Didik Aktif';
+                $data_sync['next'] = 'peserta_didik_keluar';
+                $data = getPd(1, $user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id, $data_sync);
             }
             if($aksi == 'peserta_didik_keluar'){
-                $items = getPd(0, $user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id);
-                $text = 'Data Peserta Didik Keluar';
-                $next = 'anggota_rombel_pilihan';
+                $data_sync['text'] = 'Data Peserta Didik Keluar';
+                $data_sync['next'] = 'anggota_rombel_pilihan';
+                $data = getPd(0, $user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id, $data_sync);
             }
             if($aksi == 'anggota_rombel_pilihan'){
-                $items = getAnggotaPilihan($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id);
-                $text = 'Data Anggota Rombel Matpel Pilihan';
-                $next = 'pembelajaran';
+                $data_sync['text'] = 'Data Anggota Rombel Matpel Pilihan';
+                $data_sync['next'] = 'pembelajaran';
+                $data = getAnggotaPilihan($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id, $data_sync);
             }
             if($aksi == 'pembelajaran'){
-                $items = getPembelajaran($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id);
-                $text = 'Data Pembelajaran';
-                $next = 'ekstrakurikuler';
+                $data_sync['text'] = 'Data Pembelajaran';
+                $data_sync['next'] = 'ekstrakurikuler';
+                $data = getPembelajaran($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id, $data_sync);
             }
             if($aksi == 'ekstrakurikuler'){
-                $items = getEkskul($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id);
-                $text = 'Data Ekstrakurikuler';
-                $next = 'anggota_ekskul';
+                $data_sync['text'] = 'Data Ekstrakurikuler';
+                $data_sync['next'] = 'anggota_ekskul';
+                $data = getEkskul($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id, $data_sync);
             }
             if($aksi == 'anggota_ekskul'){
-                $items = getAnggotaEkskul($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id);
-                $text = 'Data Anggota Ekstrakurikuler';
-                $next = 'dudi';
+                $data_sync['text'] = 'Data Anggota Ekstrakurikuler';
+                $data_sync['next'] = 'dudi';
+                $data = getAnggotaEkskul($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id, $data_sync);
             }
             if($aksi == 'dudi'){
-                $items = getDudi($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id);
-                $text = 'Data DUDI';
-                $next = FALSE;
+                $data_sync['text'] = 'Data DUDI';
+                $data_sync['next'] = FALSE;
+                $data = getDudi($user->sekolah_id, $semester->tahun_ajaran_id, $semester->semester_id, $data_sync);
             }
-            $data_sync = [
-                'sekolah_id' => $user->sekolah_id,
-                'npsn' => $user->sekolah->npsn,
-                'tahun_ajaran_id' => $semester->tahun_ajaran_id,
-                'semester_id' => $semester->semester_id,
-                'table' => $aksi,
-                'json' => prepare_send(json_encode($items)),
-            ];
-            $data = kirimDapodik($data_sync, $text, $next, $user->sekolah->url_erapor);
             return $data;
         }
     }

@@ -465,7 +465,7 @@ function getDudi($sekolah_id, $tahun_ajaran_id, $semester_id, $data_sync){
     return $data;
 }
 function kirimDapodik($data_sync, $text, $next, $url_erapor = NULL){
-    $url_erapor = $url_erapor ?? request()->url_erapor;
+    $url_erapor = $url_erapor ?? ($data_sync['url_erapor'] ?? request()->url_erapor);
     $url_erapor = rtrim($url_erapor, "/");
     try {
         $response = Http::withOptions([
